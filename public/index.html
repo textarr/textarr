@@ -1,0 +1,1260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Textarr - Configuration</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <!-- Setup View (first-time only) -->
+    <div id="authSetupView" class="auth-view" style="display: none;">
+      <div class="auth-container">
+        <div class="auth-card">
+          <div class="auth-header">
+            <span class="auth-icon">🔐</span>
+            <h1>Welcome to Textarr</h1>
+            <p>Create your admin account to get started</p>
+          </div>
+          <form id="setupForm" class="auth-form">
+            <div class="form-group">
+              <label for="setupUsername">Username</label>
+              <input type="text" id="setupUsername" name="username"
+                     autocomplete="username" minlength="3" required
+                     placeholder="Choose a username (min 3 characters)">
+            </div>
+            <div class="form-group">
+              <label for="setupPassword">Password</label>
+              <input type="password" id="setupPassword" name="password"
+                     autocomplete="new-password" minlength="8" required
+                     placeholder="Choose a password (min 8 characters)">
+            </div>
+            <div class="form-group">
+              <label for="setupConfirmPassword">Confirm Password</label>
+              <input type="password" id="setupConfirmPassword" name="confirmPassword"
+                     autocomplete="new-password" minlength="8" required
+                     placeholder="Confirm your password">
+            </div>
+            <div id="setupError" class="auth-error" style="display: none;"></div>
+            <button type="submit" class="auth-btn" id="setupBtn">
+              Create Account
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Login View -->
+    <div id="authLoginView" class="auth-view" style="display: none;">
+      <div class="auth-container">
+        <div class="auth-card">
+          <div class="auth-header">
+            <span class="auth-icon">📱</span>
+            <h1>Textarr</h1>
+            <p>Sign in to your account</p>
+          </div>
+          <form id="loginForm" class="auth-form">
+            <div class="form-group">
+              <label for="loginUsername">Username</label>
+              <input type="text" id="loginUsername" name="username"
+                     autocomplete="username" required
+                     placeholder="Enter your username">
+            </div>
+            <div class="form-group">
+              <label for="loginPassword">Password</label>
+              <input type="password" id="loginPassword" name="password"
+                     autocomplete="current-password" required
+                     placeholder="Enter your password">
+            </div>
+            <div id="loginError" class="auth-error" style="display: none;"></div>
+            <button type="submit" class="auth-btn" id="loginBtn">
+              Sign In
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dashboard View (authenticated content) -->
+    <div id="dashboardView" style="display: none;">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-content">
+        <div class="logo">
+          <span class="logo-icon">📱</span>
+          <h1>Textarr</h1>
+        </div>
+        <div class="header-right">
+          <div class="status-badge" id="statusBadge">
+            <span class="status-dot"></span>
+            <span class="status-text">Loading...</span>
+          </div>
+          <div class="user-menu" id="userMenu">
+            <button type="button" class="user-menu-btn" id="userMenuBtn">
+              <span class="user-icon">👤</span>
+              <span class="username" id="currentUsername">admin</span>
+              <span class="dropdown-arrow">▼</span>
+            </button>
+            <div class="user-dropdown" id="userDropdown" style="display: none;">
+              <button type="button" class="dropdown-item" id="changePasswordBtn">
+                <span>🔑</span> Change Password
+              </button>
+              <button type="button" class="dropdown-item danger" id="logoutBtn">
+                <span>🚪</span> Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+      <!-- Alert Banner -->
+      <div class="alert" id="alertBanner" style="display: none;">
+        <span class="alert-icon">⚠️</span>
+        <span class="alert-text" id="alertText"></span>
+        <button class="alert-close" id="alertCloseBtn">×</button>
+      </div>
+
+      <!-- Configuration Sections -->
+      <div class="config-grid">
+
+        <!-- Messaging Platforms Section -->
+        <div class="config-section-header">
+          <h2>📱 Messaging Platforms</h2>
+          <p>Configure how users can interact with Textarr</p>
+        </div>
+
+        <!-- Twilio Configuration -->
+        <section class="config-card">
+          <div class="card-header">
+            <span class="card-icon">📞</span>
+            <h2>Twilio SMS/MMS</h2>
+            <button class="test-btn" id="testTwilioBtn">Test</button>
+          </div>
+          <div class="card-content">
+            <div class="form-group toggle-group">
+              <label class="toggle-label">
+                <input type="checkbox" id="twilioEnabled" checked>
+                <span class="toggle-switch"></span>
+                <span class="toggle-text">Enable Twilio SMS</span>
+              </label>
+            </div>
+
+            <!-- Setup Guide (Collapsible) -->
+            <div class="collapsible-section" style="margin-top: 0; border-top: none; padding-top: 0;">
+              <button type="button" class="collapsible-header">
+                <span class="collapsible-icon">▶</span>
+                <span>Setup Guide</span>
+              </button>
+              <div class="collapsible-content" style="display: none;">
+                <div class="setup-steps">
+                  <p><strong>1. Create a Twilio account</strong><br>
+                  Sign up at <a href="https://www.twilio.com/try-twilio" target="_blank">twilio.com/try-twilio</a></p>
+
+                  <p><strong>2. Get a phone number</strong><br>
+                  In Console → Phone Numbers → Buy a number (or use trial number)</p>
+
+                  <p><strong>3. Find your credentials</strong><br>
+                  Account SID and Auth Token are on your <a href="https://console.twilio.com" target="_blank">Console dashboard</a></p>
+
+                  <p><strong>4. Configure webhook</strong><br>
+                  Go to Phone Numbers → Active Numbers → Click your number<br>
+                  Under "Messaging", set "A message comes in" to:<br>
+                  <code id="webhookUrlSetup"></code><br>
+                  Method: HTTP POST</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="twilioAccountSid">Account SID</label>
+              <input type="text" id="twilioAccountSid" placeholder="ACxxxxxxxxxxxxxxxx">
+            </div>
+            <div class="form-group">
+              <label for="twilioAuthToken">Auth Token</label>
+              <input type="password" id="twilioAuthToken" placeholder="Your auth token">
+            </div>
+            <div class="form-group">
+              <label for="twilioPhoneNumber">Phone Number</label>
+              <input type="text" id="twilioPhoneNumber" placeholder="+1234567890">
+            </div>
+            <div class="form-group toggle-group">
+              <label class="toggle-label">
+                <input type="checkbox" id="twilioSendPosterImages">
+                <span class="toggle-switch"></span>
+                <span class="toggle-text">Send Poster Images (MMS)</span>
+              </label>
+              <p class="field-help">Include movie/TV poster images in confirmation messages. MMS messages cost ~2.5x more than SMS.</p>
+            </div>
+            <div class="info-box">
+              <span>📌</span>
+              <span>Your webhook URL:<br><code id="webhookUrl"></code></span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Telegram Configuration -->
+        <section class="config-card">
+          <div class="card-header">
+            <span class="card-icon">💬</span>
+            <h2>Telegram</h2>
+          </div>
+          <div class="card-content">
+            <div class="form-group toggle-group">
+              <label class="toggle-label">
+                <input type="checkbox" id="telegramEnabled">
+                <span class="toggle-switch"></span>
+                <span class="toggle-text">Enable Telegram</span>
+              </label>
+            </div>
+
+            <!-- Setup Guide (Collapsible) -->
+            <div class="collapsible-section" style="margin-top: 0; border-top: none; padding-top: 0;">
+              <button type="button" class="collapsible-header">
+                <span class="collapsible-icon">▶</span>
+                <span>Setup Guide</span>
+              </button>
+              <div class="collapsible-content" style="display: none;">
+                <div class="setup-steps">
+                  <p><strong>1. Create a Telegram Bot</strong><br>
+                  Message <a href="https://t.me/BotFather" target="_blank">@BotFather</a> on Telegram and use /newbot</p>
+
+                  <p><strong>2. Get your Bot Token</strong><br>
+                  BotFather will give you a token like: 123456789:ABCdefGHIjklMNOpqrsTUVwxyz</p>
+
+                  <p><strong>3. Disable Group Privacy (optional)</strong><br>
+                  Use /setprivacy with BotFather if you want the bot to work in groups</p>
+
+                  <p><strong>4. Find your Chat ID</strong><br>
+                  Start a chat with your bot, then visit:<br>
+                  <code>https://api.telegram.org/bot&lt;TOKEN&gt;/getUpdates</code></p>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="telegramBotToken">Bot Token</label>
+              <input type="password" id="telegramBotToken" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz">
+            </div>
+            <div class="form-group">
+              <label for="telegramAllowedChatIds">Allowed Chat IDs (optional)</label>
+              <input type="text" id="telegramAllowedChatIds" placeholder="123456789, 987654321">
+              <p class="field-help">Comma-separated list of chat IDs. Leave empty to allow all.</p>
+            </div>
+            <div class="form-group toggle-group">
+              <label class="toggle-label">
+                <input type="checkbox" id="telegramUsePolling" checked>
+                <span class="toggle-switch"></span>
+                <span class="toggle-text">Use Polling Mode</span>
+              </label>
+              <p class="field-help">Polling is easier to set up. Disable for webhook mode in production.</p>
+            </div>
+            <div class="form-group toggle-group">
+              <label class="toggle-label">
+                <input type="checkbox" id="telegramRespondUnregistered" checked>
+                <span class="toggle-switch"></span>
+                <span class="toggle-text">Respond to Unregistered Users</span>
+              </label>
+              <p class="field-help">Send unregistered users a message with their ID so they can request access.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Discord Configuration -->
+        <section class="config-card">
+          <div class="card-header">
+            <span class="card-icon">🎮</span>
+            <h2>Discord</h2>
+          </div>
+          <div class="card-content">
+            <div class="form-group toggle-group">
+              <label class="toggle-label">
+                <input type="checkbox" id="discordEnabled">
+                <span class="toggle-switch"></span>
+                <span class="toggle-text">Enable Discord</span>
+              </label>
+            </div>
+
+            <!-- Setup Guide (Collapsible) -->
+            <div class="collapsible-section" style="margin-top: 0; border-top: none; padding-top: 0;">
+              <button type="button" class="collapsible-header">
+                <span class="collapsible-icon">▶</span>
+                <span>Setup Guide</span>
+              </button>
+              <div class="collapsible-content" style="display: none;">
+                <div class="setup-steps">
+                  <p><strong>1. Create a Discord Application</strong><br>
+                  Go to <a href="https://discord.com/developers/applications" target="_blank">Discord Developer Portal</a> and create a new application</p>
+
+                  <p><strong>2. Create a Bot</strong><br>
+                  In your app, go to "Bot" section and click "Add Bot"</p>
+
+                  <p><strong>3. Get your Bot Token</strong><br>
+                  Click "Reset Token" to get your bot token. Enable "Message Content Intent" under Privileged Gateway Intents.</p>
+
+                  <p><strong>4. Invite the Bot</strong><br>
+                  In OAuth2 → URL Generator, select "bot" scope with "Send Messages", "Read Message History" permissions.<br>
+                  Use the generated URL to invite to your server.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="discordBotToken">Bot Token</label>
+              <input type="password" id="discordBotToken" placeholder="Your Discord bot token">
+            </div>
+            <div class="form-group">
+              <label for="discordAllowedGuildIds">Allowed Server IDs (optional)</label>
+              <input type="text" id="discordAllowedGuildIds" placeholder="123456789012345678, 987654321098765432">
+              <p class="field-help">Comma-separated list of server (guild) IDs. Leave empty to allow all.</p>
+            </div>
+            <div class="form-group">
+              <label for="discordAllowedChannelIds">Allowed Channel IDs (optional)</label>
+              <input type="text" id="discordAllowedChannelIds" placeholder="123456789012345678">
+              <p class="field-help">Comma-separated list of channel IDs. Leave empty to allow all.</p>
+            </div>
+            <div class="form-group toggle-group">
+              <label class="toggle-label">
+                <input type="checkbox" id="discordRespondUnregistered" checked>
+                <span class="toggle-switch"></span>
+                <span class="toggle-text">Respond to Unregistered Users</span>
+              </label>
+              <p class="field-help">Send unregistered users a message with their ID so they can request access.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Slack Configuration -->
+        <section class="config-card">
+          <div class="card-header">
+            <span class="card-icon">💼</span>
+            <h2>Slack</h2>
+          </div>
+          <div class="card-content">
+            <div class="form-group toggle-group">
+              <label class="toggle-label">
+                <input type="checkbox" id="slackEnabled">
+                <span class="toggle-switch"></span>
+                <span class="toggle-text">Enable Slack</span>
+              </label>
+            </div>
+
+            <!-- Setup Guide (Collapsible) -->
+            <div class="collapsible-section" style="margin-top: 0; border-top: none; padding-top: 0;">
+              <button type="button" class="collapsible-header">
+                <span class="collapsible-icon">▶</span>
+                <span>Setup Guide</span>
+              </button>
+              <div class="collapsible-content" style="display: none;">
+                <div class="setup-steps">
+                  <p><strong>1. Create a Slack App</strong><br>
+                  Go to <a href="https://api.slack.com/apps" target="_blank">api.slack.com/apps</a> and create a new app "From scratch"</p>
+
+                  <p><strong>2. Configure Bot Scopes</strong><br>
+                  Go to OAuth & Permissions → Bot Token Scopes and add:<br>
+                  <code>chat:write</code>, <code>im:history</code>, <code>im:read</code>, <code>im:write</code></p>
+
+                  <p><strong>3. Install to Workspace</strong><br>
+                  Click "Install to Workspace" and copy the Bot User OAuth Token</p>
+
+                  <p><strong>4. Get Signing Secret</strong><br>
+                  Go to Basic Information → App Credentials and copy the Signing Secret</p>
+
+                  <p><strong>5. Enable Socket Mode (recommended)</strong><br>
+                  Go to Socket Mode, enable it, and create an App-Level Token with <code>connections:write</code> scope</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="slackBotToken">Bot Token</label>
+              <input type="password" id="slackBotToken" placeholder="xoxb-...">
+            </div>
+            <div class="form-group">
+              <label for="slackSigningSecret">Signing Secret</label>
+              <input type="password" id="slackSigningSecret" placeholder="Your signing secret">
+            </div>
+            <div class="form-group toggle-group">
+              <label class="toggle-label">
+                <input type="checkbox" id="slackUseSocketMode">
+                <span class="toggle-switch"></span>
+                <span class="toggle-text">Use Socket Mode</span>
+              </label>
+              <p class="field-help">Socket Mode is easier to set up (no public URL needed). Recommended for most users.</p>
+            </div>
+            <div class="form-group">
+              <label for="slackAppToken">App Token (for Socket Mode)</label>
+              <input type="password" id="slackAppToken" placeholder="xapp-...">
+              <p class="field-help">Required if Socket Mode is enabled.</p>
+            </div>
+            <div class="form-group toggle-group">
+              <label class="toggle-label">
+                <input type="checkbox" id="slackRespondUnregistered" checked>
+                <span class="toggle-switch"></span>
+                <span class="toggle-text">Respond to Unregistered Users</span>
+              </label>
+              <p class="field-help">Send unregistered users a message with their ID so they can request access.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Media Services Section -->
+        <div class="config-section-header">
+          <h2>🎬 Media Services</h2>
+          <p>Connect to Sonarr, Radarr, and TMDB for media management</p>
+        </div>
+
+        <!-- Sonarr Configuration -->
+        <section class="config-card">
+          <div class="card-header">
+            <span class="card-icon">📺</span>
+            <h2>Sonarr (TV Shows)</h2>
+            <button class="test-btn" data-test-connection="sonarr">Test</button>
+          </div>
+          <div class="card-content">
+            <div class="form-group">
+              <label for="sonarrUrl">Server URL</label>
+              <input type="url" id="sonarrUrl" placeholder="http://localhost:8989">
+            </div>
+            <div class="form-group">
+              <label for="sonarrApiKey">API Key</label>
+              <input type="password" id="sonarrApiKey" placeholder="Your Sonarr API key">
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="sonarrQualityProfile">Quality Profile</label>
+                <select id="sonarrQualityProfile">
+                  <option value="1">Default (1)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="sonarrRootFolder">Root Folder</label>
+                <select id="sonarrRootFolder">
+                  <option value="/tv">/tv</option>
+                </select>
+              </div>
+            </div>
+            <button class="fetch-btn" id="fetchSonarrBtn">Fetch Options from Sonarr</button>
+
+            <!-- Anime Settings (Collapsible) -->
+            <div class="collapsible-section">
+              <button type="button" class="collapsible-header">
+                <span class="collapsible-icon">▶</span>
+                <span>Anime Settings</span>
+              </button>
+              <div class="collapsible-content" style="display: none;">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="sonarrAnimeQualityProfile">Anime Quality Profile</label>
+                    <select id="sonarrAnimeQualityProfile">
+                      <option value="">Same as default</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label for="sonarrAnimeRootFolder">Anime Root Folder</label>
+                    <select id="sonarrAnimeRootFolder">
+                      <option value="">Same as default</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label>Anime Tags</label>
+                  <p class="field-help">Tags to apply to anime series. Fetch options first to see available tags.</p>
+                  <div id="sonarrAnimeTags" class="tags-container">
+                    <span class="tags-empty">No tags available. Click "Fetch Options" above.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Radarr Configuration -->
+        <section class="config-card">
+          <div class="card-header">
+            <span class="card-icon">🎬</span>
+            <h2>Radarr (Movies)</h2>
+            <button class="test-btn" data-test-connection="radarr">Test</button>
+          </div>
+          <div class="card-content">
+            <div class="form-group">
+              <label for="radarrUrl">Server URL</label>
+              <input type="url" id="radarrUrl" placeholder="http://localhost:7878">
+            </div>
+            <div class="form-group">
+              <label for="radarrApiKey">API Key</label>
+              <input type="password" id="radarrApiKey" placeholder="Your Radarr API key">
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="radarrQualityProfile">Quality Profile</label>
+                <select id="radarrQualityProfile">
+                  <option value="1">Default (1)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="radarrRootFolder">Root Folder</label>
+                <select id="radarrRootFolder">
+                  <option value="/movies">/movies</option>
+                </select>
+              </div>
+            </div>
+            <button class="fetch-btn" id="fetchRadarrBtn">Fetch Options from Radarr</button>
+
+            <!-- Anime Settings (Collapsible) -->
+            <div class="collapsible-section">
+              <button type="button" class="collapsible-header">
+                <span class="collapsible-icon">▶</span>
+                <span>Anime Settings</span>
+              </button>
+              <div class="collapsible-content" style="display: none;">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="radarrAnimeQualityProfile">Anime Quality Profile</label>
+                    <select id="radarrAnimeQualityProfile">
+                      <option value="">Same as default</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label for="radarrAnimeRootFolder">Anime Root Folder</label>
+                    <select id="radarrAnimeRootFolder">
+                      <option value="">Same as default</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label>Anime Tags</label>
+                  <p class="field-help">Tags to apply to anime movies. Fetch options first to see available tags.</p>
+                  <div id="radarrAnimeTags" class="tags-container">
+                    <span class="tags-empty">No tags available. Click "Fetch Options" above.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- TMDB Configuration -->
+        <section class="config-card">
+          <div class="card-header">
+            <span class="card-icon">🎬</span>
+            <h2>TMDB (Metadata)</h2>
+            <button class="test-btn" id="testTMDBBtn">Test</button>
+          </div>
+          <div class="card-content">
+            <div class="form-group">
+              <label for="tmdbApiKey">API Key</label>
+              <input type="password" id="tmdbApiKey" placeholder="Your TMDB API key">
+              <p class="field-help">Get a free API key at <a href="https://www.themoviedb.org/settings/api" target="_blank">themoviedb.org</a>. Either "API Key" or "API Read Access Token" works.</p>
+            </div>
+            <div class="form-group">
+              <label for="tmdbLanguage">Language</label>
+              <select id="tmdbLanguage">
+                <option value="en">English</option>
+                <option value="es">Spanish</option>
+                <option value="fr">French</option>
+                <option value="de">German</option>
+                <option value="it">Italian</option>
+                <option value="pt">Portuguese</option>
+                <option value="ja">Japanese</option>
+                <option value="ko">Korean</option>
+                <option value="zh">Chinese</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <!-- AI Configuration Section -->
+        <div class="config-section-header">
+          <h2>🤖 AI Configuration</h2>
+          <p>Natural language processing for user requests</p>
+        </div>
+
+        <!-- AI Configuration -->
+        <section class="config-card">
+          <div class="card-header">
+            <span class="card-icon">🤖</span>
+            <h2>AI Configuration</h2>
+            <button class="test-btn" id="testAIBtn">Test</button>
+          </div>
+          <div class="card-content">
+            <div class="form-group">
+              <label for="aiProvider">Provider</label>
+              <select id="aiProvider">
+                <option value="openai">OpenAI</option>
+                <option value="anthropic">Anthropic</option>
+                <option value="google">Google Gemini</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="aiModel">Model</label>
+              <div class="model-select-row">
+                <select id="aiModel">
+                  <option value="">Loading...</option>
+                </select>
+                <button type="button" class="refresh-btn" id="refreshModelsBtn" title="Refresh model list">↻</button>
+              </div>
+            </div>
+            <div class="form-group" id="customModelGroup" style="display: none;">
+              <label for="customModel">Custom Model ID</label>
+              <input type="text" id="customModel" placeholder="e.g., gpt-4-turbo-preview">
+            </div>
+            <div class="form-group" id="openaiKeyGroup">
+              <label for="openaiApiKey">OpenAI API Key</label>
+              <input type="password" id="openaiApiKey" placeholder="sk-...">
+            </div>
+            <div class="form-group" id="anthropicKeyGroup" style="display: none;">
+              <label for="anthropicApiKey">Anthropic API Key</label>
+              <input type="password" id="anthropicApiKey" placeholder="sk-ant-...">
+            </div>
+            <div class="form-group" id="googleKeyGroup" style="display: none;">
+              <label for="googleApiKey">Google API Key</label>
+              <input type="password" id="googleApiKey" placeholder="AIza...">
+            </div>
+            <!-- Advanced AI Settings (Collapsible) -->
+            <div class="collapsible-section">
+              <button type="button" class="collapsible-header">
+                <span class="collapsible-icon">▶</span>
+                <span>Advanced AI Settings</span>
+              </button>
+              <div class="collapsible-content" style="display: none;">
+                <div class="form-group">
+                  <label for="aiTemperature">Temperature</label>
+                  <div class="range-with-value">
+                    <input type="range" id="aiTemperature" min="0" max="2" step="0.1" value="0.7">
+                    <span id="aiTemperatureValue">0.7</span>
+                  </div>
+                  <p class="field-help">Lower = more focused, Higher = more creative (0.7 recommended)</p>
+                </div>
+                <div class="form-group">
+                  <label for="aiResponseStyle">Response Style</label>
+                  <select id="aiResponseStyle">
+                    <option value="brief">Brief (shorter messages)</option>
+                    <option value="standard" selected>Standard</option>
+                    <option value="detailed">Detailed (more info)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="aiSystemPrompt">System Prompt</label>
+                  <textarea id="aiSystemPrompt" rows="12" placeholder="Loading default prompt..."></textarea>
+                  <p class="field-help">Edit the AI system prompt. Leave empty to use default.</p>
+                  <button type="button" class="reset-btn" id="resetSystemPromptBtn">Reset to Default</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- User Management Section -->
+        <div class="config-section-header">
+          <h2>👥 User Management</h2>
+          <p>Manage authorized users and permissions</p>
+        </div>
+
+        <!-- Users Management -->
+        <section class="config-card wide">
+          <div class="card-header">
+            <span class="card-icon">👥</span>
+            <h2>Users</h2>
+          </div>
+          <div class="card-content">
+            <div class="users-section">
+              <div class="users-header">
+                <h3>Authorized Users</h3>
+                <button class="add-user-btn" id="addUserBtn">
+                  <span>+</span> Add User
+                </button>
+              </div>
+              <table class="users-table" id="usersTable">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Identities</th>
+                    <th>Role</th>
+                    <th>Requests</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="usersTableBody">
+                  <!-- Users will be rendered here -->
+                </tbody>
+              </table>
+              <div id="usersEmpty" class="users-empty" style="display: none;">
+                No users configured. Add a user to get started.
+              </div>
+
+              <!-- How to Find User IDs (Collapsible) -->
+              <div class="collapsible-section" style="margin-top: 16px;">
+                <button type="button" class="collapsible-header">
+                  <span class="collapsible-icon">▶</span>
+                  <span>How to Find User IDs</span>
+                </button>
+                <div class="collapsible-content" style="display: none;">
+                  <div class="setup-steps">
+                    <p><strong>SMS</strong><br>
+                    Use the phone number with country code (e.g., +15551234567). The +1 prefix is added automatically for US numbers.</p>
+
+                    <p><strong>Telegram</strong><br>
+                    Message <a href="https://t.me/RawDataBot" target="_blank" rel="noopener">@RawDataBot</a> on Telegram, tap Start, and find your ID in the "id" field of the response.</p>
+
+                    <p><strong>Discord</strong><br>
+                    Enable Developer Mode in Settings → Advanced, then right-click your profile and select "Copy ID".</p>
+
+                    <p><strong>Slack</strong><br>
+                    Click on a user's name → View full profile → Click the three dots (⋯) → Copy Member ID.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- System Settings Section -->
+        <div class="config-section-header">
+          <h2>⚙️ System Settings</h2>
+          <p>Application behavior and server configuration</p>
+        </div>
+
+        <!-- Session Configuration -->
+        <section class="config-card">
+          <div class="card-header">
+            <span class="card-icon">⏱️</span>
+            <h2>Session Settings</h2>
+          </div>
+          <div class="card-content">
+            <p class="field-help" style="margin-bottom: 16px;">Controls SMS conversation flow. When a user searches for media, the bot presents options and waits for a selection. Sessions track this conversation state.</p>
+            <div class="form-group">
+              <label for="sessionTimeout">Session Timeout (minutes)</label>
+              <p class="field-help">How long before a conversation resets. If a user doesn't respond within this time, they'll need to start over.</p>
+              <input type="number" id="sessionTimeout" min="1" max="60" value="5">
+            </div>
+            <div class="form-group">
+              <label for="maxSearchResults">Max Search Results</label>
+              <p class="field-help">Number of search results to show in a single SMS. Keep low to fit within SMS character limits.</p>
+              <input type="number" id="maxSearchResults" min="1" max="10" value="5">
+            </div>
+            <div class="form-group">
+              <label for="unregisteredMessage">Unregistered User Message</label>
+              <p class="field-help">Message shown to unregistered users. Use {id} for their ID and {platform} for the platform name.</p>
+              <textarea id="unregisteredMessage" rows="3" placeholder="You're not registered..."></textarea>
+            </div>
+          </div>
+        </section>
+
+        <!-- Quotas Configuration -->
+        <section class="config-card">
+          <div class="card-header">
+            <span class="card-icon">📊</span>
+            <h2>Request Quotas</h2>
+          </div>
+          <div class="card-content">
+            <div class="form-group toggle-group">
+              <label class="toggle-label">
+                <input type="checkbox" id="quotasEnabled">
+                <span class="toggle-switch"></span>
+                <span class="toggle-text">Enable Quotas</span>
+              </label>
+              <p class="field-help">Limit how many requests users can make per period.</p>
+            </div>
+            <div class="form-group">
+              <label for="quotasPeriod">Reset Period</label>
+              <select id="quotasPeriod">
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="quotasMovieLimit">Movie Limit</label>
+                <input type="number" id="quotasMovieLimit" min="1" max="100" value="10">
+              </div>
+              <div class="form-group">
+                <label for="quotasTvShowLimit">TV Show Limit</label>
+                <input type="number" id="quotasTvShowLimit" min="1" max="100" value="10">
+              </div>
+            </div>
+            <div class="form-group toggle-group">
+              <label class="toggle-label">
+                <input type="checkbox" id="quotasAdminExempt" checked>
+                <span class="toggle-switch"></span>
+                <span class="toggle-text">Admins Exempt from Quotas</span>
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <!-- Admin Notifications -->
+        <section class="config-card">
+          <div class="card-header">
+            <span class="card-icon">🔔</span>
+            <h2>Admin Notifications</h2>
+          </div>
+          <div class="card-content">
+            <div class="form-group toggle-group">
+              <label class="toggle-label">
+                <input type="checkbox" id="notificationsEnabled" checked>
+                <span class="toggle-switch"></span>
+                <span class="toggle-text">Enable Admin Notifications</span>
+              </label>
+              <p class="field-help">Notify admins when users add new media requests.</p>
+            </div>
+            <div class="form-group">
+              <label>Notification Platforms</label>
+              <p class="field-help">Send notifications via these platforms (admins must have matching identity).</p>
+              <div class="platform-checkboxes">
+                <label class="toggle-label">
+                  <input type="checkbox" id="notifyViaSms" checked>
+                  <span class="toggle-switch"></span>
+                  <span class="toggle-text">SMS</span>
+                </label>
+                <label class="toggle-label">
+                  <input type="checkbox" id="notifyViaTelegram">
+                  <span class="toggle-switch"></span>
+                  <span class="toggle-text">Telegram</span>
+                </label>
+                <label class="toggle-label">
+                  <input type="checkbox" id="notifyViaDiscord">
+                  <span class="toggle-switch"></span>
+                  <span class="toggle-text">Discord</span>
+                </label>
+                <label class="toggle-label">
+                  <input type="checkbox" id="notifyViaSlack">
+                  <span class="toggle-switch"></span>
+                  <span class="toggle-text">Slack</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Server Configuration -->
+        <section class="config-card">
+          <div class="card-header">
+            <span class="card-icon">🖥️</span>
+            <h2>Server</h2>
+          </div>
+          <div class="card-content">
+            <div class="form-group">
+              <label for="serverPort">Port</label>
+              <input type="number" id="serverPort" min="1" max="65535" value="3030">
+            </div>
+            <div class="form-group">
+              <label for="serverExternalUrl">External URL</label>
+              <input type="url" id="serverExternalUrl" placeholder="https://your-server.com:3030">
+              <p class="field-help">Public URL for webhooks. Required for download notifications. Include port if not 80/443.</p>
+            </div>
+            <div class="form-group">
+              <label for="logLevel">Log Level</label>
+              <select id="logLevel">
+                <option value="fatal">Fatal</option>
+                <option value="error">Error</option>
+                <option value="warn">Warning</option>
+                <option value="info" selected>Info</option>
+                <option value="debug">Debug</option>
+                <option value="trace">Trace</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <!-- Download Notifications -->
+        <section class="config-card">
+          <div class="card-header">
+            <span class="card-icon">📥</span>
+            <h2>Download Notifications</h2>
+          </div>
+          <div class="card-content">
+            <div class="form-group toggle-group">
+              <label class="toggle-label">
+                <input type="checkbox" id="downloadNotificationsEnabled" checked>
+                <span class="toggle-switch"></span>
+                <span class="toggle-text">Enable Download Notifications</span>
+              </label>
+              <p class="field-help">Notify users when their requested media finishes downloading.</p>
+            </div>
+            <div class="form-group">
+              <label for="downloadNotificationsTemplate">Message Template</label>
+              <input type="text" id="downloadNotificationsTemplate" placeholder="{emoji} {title} is ready to watch!">
+              <p class="field-help">Variables: {emoji}, {title}, {year}, {mediaType}</p>
+            </div>
+
+            <!-- Webhook Setup (Collapsible) -->
+            <div class="collapsible-section">
+              <button type="button" class="collapsible-header">
+                <span class="collapsible-icon">▶</span>
+                <span>Webhook Setup</span>
+              </button>
+              <div class="collapsible-content" style="display: none;">
+                <p class="field-help" style="margin-bottom: 12px;">
+                  Download notifications require webhooks from Sonarr/Radarr. Click the buttons below to automatically configure them, or set them up manually.
+                </p>
+                <div class="webhook-setup-buttons">
+                  <button type="button" class="setup-webhook-btn" id="setupSonarrWebhookBtn">
+                    <span>📺</span> Setup Sonarr Webhook
+                  </button>
+                  <button type="button" class="setup-webhook-btn" id="setupRadarrWebhookBtn">
+                    <span>🎬</span> Setup Radarr Webhook
+                  </button>
+                </div>
+                <div id="webhookSetupStatus" class="webhook-status" style="display: none;"></div>
+
+                <!-- Manual Setup Guide -->
+                <div class="manual-setup-guide" style="margin-top: 16px;">
+                  <p><strong>Manual Setup:</strong></p>
+                  <p><strong>Sonarr:</strong> Settings → Connect → Add → Webhook<br>
+                  URL: <code id="sonarrWebhookUrl"></code><br>
+                  Events: On Download, On Upgrade, On Import Complete</p>
+                  <p><strong>Radarr:</strong> Settings → Connect → Add → Webhook<br>
+                  URL: <code id="radarrWebhookUrl"></code><br>
+                  Events: On Download, On Upgrade</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Message Customization Section -->
+        <div class="config-section-header">
+          <h2>💬 Message Customization</h2>
+          <p>Customize all bot messages and responses</p>
+        </div>
+
+        <section class="config-card wide">
+          <div class="card-header">
+            <span class="card-icon">✍️</span>
+            <h2>Bot Messages</h2>
+            <button type="button" class="reset-btn-small" id="resetMessagesBtn">Reset All to Defaults</button>
+          </div>
+          <div class="card-content">
+
+            <!-- Acknowledgment & Errors -->
+            <div class="collapsible-section" style="margin-top: 0; border-top: none; padding-top: 0;">
+              <button type="button" class="collapsible-header">
+                <span class="collapsible-icon">▶</span>
+                <span>Acknowledgment & Errors</span>
+              </button>
+              <div class="collapsible-content" style="display: none;">
+                <div class="form-group toggle-group">
+                  <label class="toggle-label">
+                    <input type="checkbox" id="msgAcknowledgmentEnabled" checked>
+                    <span class="toggle-switch"></span>
+                    <span class="toggle-text">Enable Acknowledgment Message</span>
+                  </label>
+                  <p class="field-help">Send an immediate response when a request is received (SMS only).</p>
+                </div>
+                <div class="form-group">
+                  <label for="msgAcknowledgment">Acknowledgment Message</label>
+                  <input type="text" id="msgAcknowledgment" placeholder="One second...">
+                </div>
+                <div class="form-group">
+                  <label for="msgGenericError">Generic Error</label>
+                  <input type="text" id="msgGenericError" placeholder="Something went wrong. Please try again.">
+                </div>
+                <div class="form-group">
+                  <label for="msgUnknownCommand">Unknown Command</label>
+                  <input type="text" id="msgUnknownCommand" placeholder="I didn't understand that. Try: 'Add Breaking Bad' or 'help' for commands.">
+                </div>
+              </div>
+            </div>
+
+            <!-- Prompts & Navigation -->
+            <div class="collapsible-section">
+              <button type="button" class="collapsible-header">
+                <span class="collapsible-icon">▶</span>
+                <span>Prompts & Navigation</span>
+              </button>
+              <div class="collapsible-content" style="display: none;">
+                <div class="form-group">
+                  <label for="msgAddPrompt">Add Prompt</label>
+                  <input type="text" id="msgAddPrompt" placeholder="What would you like to add? Try: 'Add Breaking Bad' or 'Add Dune'">
+                </div>
+                <div class="form-group">
+                  <label for="msgCancelled">Cancelled</label>
+                  <input type="text" id="msgCancelled" placeholder="Cancelled. Send a new request anytime!">
+                </div>
+                <div class="form-group">
+                  <label for="msgRestart">Restart</label>
+                  <input type="text" id="msgRestart" placeholder="Starting fresh! What would you like to add?">
+                </div>
+                <div class="form-group">
+                  <label for="msgBackToStart">Back to Start</label>
+                  <input type="text" id="msgBackToStart" placeholder="Back to the start! What would you like to add?">
+                </div>
+              </div>
+            </div>
+
+            <!-- Search & Selection -->
+            <div class="collapsible-section">
+              <button type="button" class="collapsible-header">
+                <span class="collapsible-icon">▶</span>
+                <span>Search & Selection</span>
+              </button>
+              <div class="collapsible-content" style="display: none;">
+                <div class="form-group">
+                  <label for="msgNoResults">No Results</label>
+                  <input type="text" id="msgNoResults" placeholder="No results found for &quot;{query}&quot;. Try checking the spelling or being more specific.">
+                  <p class="field-help">
+                    <span class="variable-chip" title="The search term the user entered">{query}</span>
+                  </p>
+                </div>
+                <div class="form-group">
+                  <label for="msgSearchResults">Search Results Header</label>
+                  <input type="text" id="msgSearchResults" placeholder="Found {count} results for &quot;{query}&quot;:">
+                  <p class="field-help">
+                    <span class="variable-chip" title="Number of results found">{count}</span>
+                    <span class="variable-chip" title="The search term the user entered">{query}</span>
+                  </p>
+                </div>
+                <div class="form-group">
+                  <label for="msgSelectPrompt">Selection Prompt</label>
+                  <input type="text" id="msgSelectPrompt" placeholder="Reply with a number, or search for something else.">
+                </div>
+                <div class="form-group">
+                  <label for="msgSelectRange">Selection Range Error</label>
+                  <input type="text" id="msgSelectRange" placeholder="Please select a number between 1 and {max}.">
+                  <p class="field-help">
+                    <span class="variable-chip" title="Maximum valid selection number">{max}</span>
+                  </p>
+                </div>
+                <div class="form-group">
+                  <label for="msgNothingToSelect">Nothing to Select</label>
+                  <input type="text" id="msgNothingToSelect" placeholder="Nothing to select from. Try searching for a movie or TV show!">
+                </div>
+                <div class="form-group">
+                  <label for="msgNothingToConfirm">Nothing to Confirm</label>
+                  <input type="text" id="msgNothingToConfirm" placeholder="Nothing to confirm. Try requesting a movie or TV show!">
+                </div>
+              </div>
+            </div>
+
+            <!-- Confirmation -->
+            <div class="collapsible-section">
+              <button type="button" class="collapsible-header">
+                <span class="collapsible-icon">▶</span>
+                <span>Confirmation Messages</span>
+              </button>
+              <div class="collapsible-content" style="display: none;">
+                <div class="form-group">
+                  <label for="msgConfirmPrompt">Confirm Prompt</label>
+                  <input type="text" id="msgConfirmPrompt" placeholder="YES to add, NO to cancel, or pick a different number.">
+                </div>
+                <div class="form-group">
+                  <label for="msgConfirmAnimePrompt">Confirm Anime Prompt</label>
+                  <input type="text" id="msgConfirmAnimePrompt" placeholder="YES to add to anime library, NO to cancel, or pick a different number.">
+                </div>
+                <div class="form-group">
+                  <label for="msgAnimeOrRegularPrompt">Anime or Regular Prompt</label>
+                  <textarea id="msgAnimeOrRegularPrompt" rows="2" placeholder="This appears to be animated content.
+
+Reply ANIME or REGULAR to choose library."></textarea>
+                </div>
+                <div class="form-group">
+                  <label for="msgSeasonSelectPrompt">Season Selection Prompt</label>
+                  <textarea id="msgSeasonSelectPrompt" rows="4" placeholder="Which seasons?
+1. All
+2. First season
+3. Latest season
+4. Future only
+
+Reply with a number."></textarea>
+                </div>
+                <div class="form-group">
+                  <label for="msgSeasonConfirmPrompt">Season Confirm Prompt</label>
+                  <textarea id="msgSeasonConfirmPrompt" rows="2" placeholder="Monitoring: {monitorType}
+
+YES to add, NO to cancel."></textarea>
+                  <p class="field-help">
+                    <span class="variable-chip" title="Season monitoring type (All, First, Latest, Future)">{monitorType}</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Success & Library Status -->
+            <div class="collapsible-section">
+              <button type="button" class="collapsible-header">
+                <span class="collapsible-icon">▶</span>
+                <span>Success & Library Status</span>
+              </button>
+              <div class="collapsible-content" style="display: none;">
+                <div class="form-group">
+                  <label for="msgMediaAdded">Media Added</label>
+                  <textarea id="msgMediaAdded" rows="2" placeholder="{title} added!
+
+It will start downloading shortly. Want to add anything else?"></textarea>
+                  <p class="field-help">
+                    <span class="variable-chip" title="Movie or TV show title with emoji prefix">{title}</span>
+                  </p>
+                </div>
+                <div class="form-group">
+                  <label for="msgAlreadyAvailable">Already Available</label>
+                  <input type="text" id="msgAlreadyAvailable" placeholder="{title} is available to watch!">
+                  <p class="field-help">
+                    <span class="variable-chip" title="Movie or TV show title with emoji prefix">{title}</span>
+                  </p>
+                </div>
+                <div class="form-group">
+                  <label for="msgAlreadyMonitored">Already Monitored</label>
+                  <input type="text" id="msgAlreadyMonitored" placeholder="{title} is in your library, waiting to download.">
+                  <p class="field-help">
+                    <span class="variable-chip" title="Movie or TV show title with emoji prefix">{title}</span>
+                  </p>
+                </div>
+                <div class="form-group">
+                  <label for="msgAlreadyPartial">Partially Available</label>
+                  <textarea id="msgAlreadyPartial" rows="2" placeholder="{title} is partially available.
+{episodeFileCount}/{episodeCount} episodes downloaded ({percentComplete}%)"></textarea>
+                  <p class="field-help">
+                    <span class="variable-chip" title="Movie or TV show title with emoji prefix">{title}</span>
+                    <span class="variable-chip" title="Number of episodes downloaded">{episodeFileCount}</span>
+                    <span class="variable-chip" title="Total number of episodes">{episodeCount}</span>
+                    <span class="variable-chip" title="Percentage of episodes downloaded">{percentComplete}</span>
+                  </p>
+                </div>
+                <div class="form-group">
+                  <label for="msgAlreadyInLibrary">Already in Library</label>
+                  <input type="text" id="msgAlreadyInLibrary" placeholder="{title} is already in your library!">
+                  <p class="field-help">
+                    <span class="variable-chip" title="Movie or TV show title with emoji prefix">{title}</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Status & Downloads -->
+            <div class="collapsible-section">
+              <button type="button" class="collapsible-header">
+                <span class="collapsible-icon">▶</span>
+                <span>Status & Downloads</span>
+              </button>
+              <div class="collapsible-content" style="display: none;">
+                <div class="form-group">
+                  <label for="msgNothingDownloading">Nothing Downloading</label>
+                  <input type="text" id="msgNothingDownloading" placeholder="Nothing is currently downloading.">
+                </div>
+                <div class="form-group">
+                  <label for="msgCurrentlyDownloading">Currently Downloading Header</label>
+                  <input type="text" id="msgCurrentlyDownloading" placeholder="Currently downloading:">
+                </div>
+              </div>
+            </div>
+
+            <!-- Help Text -->
+            <div class="collapsible-section">
+              <button type="button" class="collapsible-header">
+                <span class="collapsible-icon">▶</span>
+                <span>Help Text</span>
+              </button>
+              <div class="collapsible-content" style="display: none;">
+                <div class="form-group">
+                  <label for="msgHelpText">Help Message</label>
+                  <textarea id="msgHelpText" rows="12" placeholder="Textarr Help
+
+Commands:
+• &quot;Add [title]&quot; - Add a movie or TV show
+• &quot;Add [title] anime&quot; - Add anime content
+• &quot;Status&quot; - Check download progress
+• &quot;Help&quot; - Show this message
+
+Examples:
+• &quot;Add Breaking Bad&quot;
+• &quot;Add Attack on Titan anime&quot;
+• &quot;Add Dune 2021&quot;
+• &quot;What's downloading?&quot;
+
+When selecting from a list, reply with the number.
+Reply YES/NO to confirm or cancel."></textarea>
+                  <p class="field-help">Full help message shown to users.</p>
+                </div>
+                <div class="form-group">
+                  <label for="msgAdminHelpText">Admin Help Text</label>
+                  <textarea id="msgAdminHelpText" rows="12" placeholder="Admin Commands:
+• &quot;admin list&quot; - List all users
+• &quot;admin add <id> Name&quot; - Add user
+• &quot;admin remove <id>&quot; - Remove user
+• &quot;admin promote <id>&quot; - Make admin
+• &quot;admin demote <id>&quot; - Remove admin
+• &quot;admin quota <id> movies +5&quot; - Add quota
+
+User IDs by platform:
+• SMS: Phone number (e.g., 5551234567)
+• Telegram: telegram:123456789
+• Discord: discord:123456789012345678
+• Slack: slack:U0123456789"></textarea>
+                  <p class="field-help">Additional help text shown to admin users.</p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+      </div>
+
+      <!-- Save Button -->
+      <div class="actions">
+        <button class="save-btn" id="saveConfigBtn">
+          <span>💾</span>
+          Save Configuration
+        </button>
+        <p class="save-note">Changes require a restart to take effect</p>
+      </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>Textarr • <a href="https://github.com/Textarr/textarr" target="_blank" rel="noopener">GitHub</a></p>
+    </footer>
+    </div><!-- end dashboardView -->
+
+    <!-- Change Password Modal -->
+    <div class="modal-overlay" id="changePasswordModal" style="display: none;">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>Change Password</h2>
+          <button type="button" class="modal-close" id="closePasswordModal">&times;</button>
+        </div>
+        <form id="changePasswordForm" class="auth-form">
+          <div class="form-group">
+            <label for="currentPassword">Current Password</label>
+            <input type="password" id="currentPassword" name="currentPassword"
+                   autocomplete="current-password" required>
+          </div>
+          <div class="form-group">
+            <label for="newPassword">New Password</label>
+            <input type="password" id="newPassword" name="newPassword"
+                   autocomplete="new-password" minlength="8" required
+                   placeholder="Min 8 characters">
+          </div>
+          <div class="form-group">
+            <label for="confirmNewPassword">Confirm New Password</label>
+            <input type="password" id="confirmNewPassword" name="confirmNewPassword"
+                   autocomplete="new-password" minlength="8" required>
+          </div>
+          <div id="changePasswordError" class="auth-error" style="display: none;"></div>
+          <div class="modal-actions">
+            <button type="button" class="btn-secondary" id="cancelPasswordChange">Cancel</button>
+            <button type="submit" class="auth-btn">Update Password</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toast">
+    <span class="toast-icon" id="toastIcon">✓</span>
+    <span class="toast-message" id="toastMessage"></span>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

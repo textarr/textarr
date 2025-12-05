@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  textarr:
+    build: .
+    container_name: textarr
+    restart: unless-stopped
+    ports:
+      - "3030:3030"
+    volumes:
+      - ./config:/app/config
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3030/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - media-net
+
+  # Optional: Cloudflare Tunnel for secure webhook access without opening ports
+  # Uncomment and configure CLOUDFLARE_TUNNEL_TOKEN in .env
+  # cloudflared:
+  #   image: cloudflare/cloudflared:latest
+  #   container_name: cloudflared-tunnel
+  #   restart: unless-stopped
+  #   command: tunnel run
+  #   environment:
+  #     - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+  #   networks:
+  #     - media-net
+  #   depends_on:
+  #     - textarr
+
+  # Optional: Include if you want to run Sonarr/Radarr in the same compose
+  # Uncomment below if needed
+
+  # sonarr:
+  #   image: lscr.io/linuxserver/sonarr:latest
+  #   container_name: sonarr
+  #   environment:
+  #     - PUID=1000
+  #     - PGID=1000
+  #     - TZ=America/New_York
+  #   volumes:
+  #     - ./config/sonarr:/config
+  #     - /path/to/tv:/tv
+  #     - /path/to/downloads:/downloads
+  #   ports:
+  #     - "8989:8989"
+  #   restart: unless-stopped
+  #   networks:
+  #     - media-net
+
+  # radarr:
+  #   image: lscr.io/linuxserver/radarr:latest
+  #   container_name: radarr
+  #   environment:
+  #     - PUID=1000
+  #     - PGID=1000
+  #     - TZ=America/New_York
+  #   volumes:
+  #     - ./config/radarr:/config
+  #     - /path/to/movies:/movies
+  #     - /path/to/downloads:/downloads
+  #   ports:
+  #     - "7878:7878"
+  #   restart: unless-stopped
+  #   networks:
+  #     - media-net
+
+networks:
+  media-net:
+    driver: bridge
