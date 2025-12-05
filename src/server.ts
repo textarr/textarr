@@ -42,6 +42,8 @@ export async function createServer(container: ServiceContainer, logger: Logger) 
         frameSrc: ["'none'"],
         objectSrc: ["'none'"],
         baseUri: ["'self'"],
+        // Disable upgrade-insecure-requests (helmet default) to allow HTTP
+        upgradeInsecureRequests: null,
       },
     },
     crossOriginEmbedderPolicy: false, // Required for image loading
