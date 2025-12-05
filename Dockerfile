@@ -50,9 +50,7 @@ COPY public ./public
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
-# Create non-root user (will be modified at runtime to match PUID/PGID)
-RUN groupadd -g 1000 nodejs && \
-    useradd -u 1000 -g nodejs nodejs
+# Use existing node user (UID/GID 1000) - will be modified at runtime to match PUID/PGID
 
 # Create config directory
 RUN mkdir -p /app/config
