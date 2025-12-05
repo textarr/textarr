@@ -22,6 +22,10 @@
   <!-- Path Configuration -->
   <Config Name="Config Directory" Target="/app/config" Default="/mnt/user/appdata/textarr" Mode="rw" Description="Path to store configuration and session data" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/textarr</Config>
 
+  <!-- User/Group Configuration -->
+  <Config Name="PUID" Target="PUID" Default="99" Mode="" Description="User ID to run as (99 for nobody on Unraid)" Type="Variable" Display="advanced" Required="false" Mask="false">99</Config>
+  <Config Name="PGID" Target="PGID" Default="100" Mode="" Description="Group ID to run as (100 for users on Unraid)" Type="Variable" Display="advanced" Required="false" Mask="false">100</Config>
+
   <!-- Twilio Configuration -->
   <Config Name="Twilio Account SID" Target="TWILIO_ACCOUNT_SID" Default="" Mode="" Description="Your Twilio Account SID (starts with AC)" Type="Variable" Display="always" Required="true" Mask="false"></Config>
   <Config Name="Twilio Auth Token" Target="TWILIO_AUTH_TOKEN" Default="" Mode="" Description="Your Twilio Auth Token" Type="Variable" Display="always" Required="true" Mask="true"></Config>

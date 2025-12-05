@@ -306,8 +306,24 @@ docker-compose up -d
 
 # Or build manually
 docker build -t textarr .
-docker run -d -p 3030:3030 -v $(pwd)/config:/app/config textarr
+docker run -d \
+  -p 3030:3030 \
+  -v $(pwd)/config:/app/config \
+  -e PUID=1000 \
+  -e PGID=1000 \
+  textarr
 ```
+
+**Environment Variables:**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PUID` | `1000` | User ID to run as (matches your host user for volume permissions) |
+| `PGID` | `1000` | Group ID to run as |
+| `NODE_ENV` | `development` | Set to `production` for secure cookies |
+| `LOG_LEVEL` | `info` | Logging level: debug, info, warn, error |
+
+To find your user's PUID/PGID, run `id` in your terminal.
 
 ### Unraid
 
