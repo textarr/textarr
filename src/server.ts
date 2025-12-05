@@ -35,7 +35,7 @@ export async function createServer(container: ServiceContainer, logger: Logger) 
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'"], // Required for inline styles
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
         imgSrc: ["'self'", 'data:', 'https://image.tmdb.org'],
         connectSrc: ["'self'"],
         fontSrc: ["'self'", 'https://fonts.gstatic.com'],
@@ -45,6 +45,11 @@ export async function createServer(container: ServiceContainer, logger: Logger) 
       },
     },
     crossOriginEmbedderPolicy: false, // Required for image loading
+    // Disable HSTS when not using HTTPS to prevent browsers from upgrading HTTP requests
+    strictTransportSecurity: process.env.NODE_ENV === 'production',
+    // Disable these headers that cause issues on non-localhost HTTP origins
+    crossOriginOpenerPolicy: false,
+    originAgentCluster: false,
   });
 
   // Cookie support (required for sessions)
