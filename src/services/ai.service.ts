@@ -433,13 +433,26 @@ export class AIService {
   private parseAdminCommand(message: string): ParsedRequest | null {
     const normalized = message.toLowerCase().trim();
 
-    // Check if it's an admin command
-    if (!normalized.startsWith('admin ')) {
+    // Check if it's an admin command (either "admin" alone or "admin <subcommand>")
+    if (normalized !== 'admin' && !normalized.startsWith('admin ')) {
       return null;
     }
 
     const parts = message.trim().split(/\s+/);
     const subCommand = parts[1]?.toLowerCase();
+
+    // admin (by itself) or "admin help" - show admin help
+    if (!subCommand || subCommand === 'help') {
+      return {
+        mediaType: 'unknown',
+        title: null,
+        year: null,
+        action: 'admin_help',
+        selectionNumber: null,
+        confidence: 1.0,
+        rawMessage: message,
+      };
+    }
 
     // admin list
     if (subCommand === 'list') {

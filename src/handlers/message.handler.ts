@@ -147,6 +147,8 @@ export class MessageHandler {
           return { text: this.config.messages.nothingToSelect };
 
         // Admin commands
+        case 'admin_help':
+          return this.handleAdminHelp(userId);
         case 'admin_list':
           return this.handleAdminList(userId);
         case 'admin_add':
@@ -640,7 +642,7 @@ export class MessageHandler {
   }
 
   /**
-   * Format added message (includes poster if available)
+   * Format added message (no poster - already shown in confirmation prompt)
    */
   private formatAddedMessage(media: MediaSearchResult, isAnime: boolean): MessageResponse {
     const emoji = getMediaEmoji(media.mediaType);
@@ -648,10 +650,7 @@ export class MessageHandler {
     const title = `${emoji} ${media.title}${libraryLabel}`;
     const text = `${EMOJI.checkGreen} ${formatMessage(this.config.messages.mediaAdded, { title })}`;
 
-    // Include poster URL for MMS if available
-    const mediaUrls = media.posterUrl ? [media.posterUrl] : undefined;
-
-    return { text, mediaUrls };
+    return { text };
   }
 
   /**
@@ -884,6 +883,16 @@ export class MessageHandler {
       return { text: `${EMOJI.warning} ${this.config.messages.adminOnly}` };
     }
     return null;
+  }
+
+  /**
+   * Handle admin help command - show available admin commands
+   */
+  private handleAdminHelp(userId: PlatformUserId): MessageResponse {
+    const notAdmin = this.requireAdmin(userId);
+    if (notAdmin) return notAdmin;
+
+    return { text: `${EMOJI.crown} ${this.config.messages.adminHelpText}` };
   }
 
   /**

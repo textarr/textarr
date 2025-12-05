@@ -24,6 +24,7 @@ export const ActionType = z.enum([
   'show_context', // Show current session state
   'restart', // Start fresh, clear session
   'change_selection', // Pick a different option (while in confirmation)
+  'admin_help', // Admin: show admin commands
   'admin_add', // Admin: add a user
   'admin_remove', // Admin: remove a user
   'admin_list', // Admin: list all users
