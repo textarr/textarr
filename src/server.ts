@@ -45,8 +45,8 @@ export async function createServer(container: ServiceContainer, logger: Logger) 
       },
     },
     crossOriginEmbedderPolicy: false, // Required for image loading
-    // Disable HSTS when not using HTTPS to prevent browsers from upgrading HTTP requests
-    strictTransportSecurity: process.env.NODE_ENV === 'production',
+    // Disable HSTS - not needed when running behind a reverse proxy or on local network
+    strictTransportSecurity: false,
     // Disable these headers that cause issues on non-localhost HTTP origins
     crossOriginOpenerPolicy: false,
     originAgentCluster: false,
