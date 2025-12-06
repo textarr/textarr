@@ -2,16 +2,16 @@
 <Container version="2">
   <Name>Textarr</Name>
   <Repository>ghcr.io/textarr/textarr:latest</Repository>
-  <Registry>https://github.com/Textarr/textarr/pkgs/container/textarr</Registry>
+  <Registry>https://github.com/textarr/textarr/pkgs/container/textarr</Registry>
   <Network>bridge</Network>
   <Privileged>false</Privileged>
-  <Support>https://github.com/Textarr/textarr/issues</Support>
-  <Project>https://github.com/Textarr/textarr</Project>
+  <Support>https://github.com/textarr/textarr/issues</Support>
+  <Project>https://github.com/textarr/textarr</Project>
   <Overview>AI-powered media request bot for Sonarr and Radarr. Supports Telegram, Discord, Slack (no port forwarding needed), and SMS via Twilio (requires Tailscale Funnel or Cloudflare Tunnel for webhooks). Configure everything through the web UI.</Overview>
   <Category>MediaApp:Other Tools:</Category>
   <WebUI>http://[IP]:[PORT:3030]/</WebUI>
-  <TemplateURL>https://raw.githubusercontent.com/Textarr/textarr/main/unraid-template.xml</TemplateURL>
-  <Icon>https://raw.githubusercontent.com/Textarr/textarr/main/public/icon.png</Icon>
+  <TemplateURL>https://raw.githubusercontent.com/textarr/textarr/main/textarr-unraid-template.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/textarr/textarr/main/public/icon.png</Icon>
   <ExtraParams>--restart=unless-stopped</ExtraParams>
   <DateInstalled></DateInstalled>
   <Description>AI-powered media request bot for Sonarr and Radarr. Request movies and TV shows via natural language on Telegram, Discord, Slack, or SMS. Telegram/Discord/Slack work without exposing ports. SMS (Twilio) requires a public URL - use Tailscale Funnel or Cloudflare Tunnel. All configuration is done through the web UI after installation.</Description>
