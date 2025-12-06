@@ -66,11 +66,15 @@ export class MessageHandler {
       // Get current session state
       const session = this.services.session.getSession(userId);
 
+      // Record user message for conversation history
+      this.services.session.addMessage(userId, 'user', message);
+
       // Parse the message with AI, passing session context for natural conversation
       const parsed = await this.services.ai.parseMessage(message, {
         state: session.state,
         pendingResults: session.pendingResults,
         selectedMedia: session.selectedMedia,
+        recentMessages: this.services.session.getRecentMessages(userId),
       });
       this.logger.info({
         action: parsed.action,
@@ -276,6 +280,7 @@ export class MessageHandler {
     // Multiple results - ask for selection
     this.logger.info({ resultCount: results.length }, 'Multiple results - awaiting selection');
     this.services.session.setPendingResults(userId, results);
+    this.services.session.setResultSource(userId, 'search'); // Search results don't persist after add
     return { text: this.formatSelectionPrompt(results, parsed.title) };
   }
 
@@ -781,6 +786,24 @@ export class MessageHandler {
       // Send notification to all admins
       await this.notifyAdmins(userId, media);
 
+      // Check if we should preserve the results list (recommendations only)
+      const resultSource = this.services.session.getResultSource(userId);
+      if (resultSource === 'recommendation') {
+        // Remove the added item from pending results
+        this.services.session.removeFromPendingResults(userId, media.id);
+        const remaining = this.services.session.getPendingResults(userId);
+
+        if (remaining.length > 0) {
+          // Show success message with remaining list
+          this.services.session.setState(userId, 'awaiting_selection');
+          const addedMsg = this.formatAddedMessage(media, isAnime);
+          return {
+            text: addedMsg.text + '\n\n' + this.formatSelectionPrompt(remaining, 'remaining'),
+          };
+        }
+      }
+
+      // For search results or empty recommendation list, reset session
       this.services.session.resetSession(userId);
       return this.formatAddedMessage(media, isAnime);
     } catch (error) {
@@ -1206,6 +1229,7 @@ export class MessageHandler {
 
       // Store results in session and show selection prompt
       this.services.session.setPendingResults(userId, results);
+      this.services.session.setResultSource(userId, 'recommendation'); // Recommendation results persist after add
       return { text: this.formatRecommendationPrompt(results, label) };
     } catch (error) {
       this.logger.error({ error, params }, 'Failed to fetch recommendations');

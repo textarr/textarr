@@ -5,7 +5,7 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { z } from 'zod';
 import type { Logger } from '../utils/logger.js';
 import { AIParseError } from '../utils/errors.js';
-import type { ParsedRequest, ConversationState, MediaSearchResult } from '../schemas/index.js';
+import type { ParsedRequest, ConversationState, MediaSearchResult, ConversationMessage } from '../schemas/index.js';
 
 /**
  * Session context for AI parsing
@@ -15,6 +15,7 @@ export interface AISessionContext {
   state: ConversationState;
   pendingResults?: MediaSearchResult[];
   selectedMedia?: MediaSearchResult | null;
+  recentMessages?: ConversationMessage[];
 }
 
 export interface AIConfig {
@@ -304,6 +305,20 @@ Interpret their response:
 - "start over", "reset", "clear" → action: restart
 - Declining/ending (no, no thanks, nope, I'm good, that's all, thanks, thank you, goodbye) → action: decline
 - Wanting to continue without specifying title (yes, yeah, sure, yep, ok) → action: continue
+`;
+  }
+
+  // Add recent conversation history for context
+  if (context?.recentMessages?.length) {
+    const recentHistory = context.recentMessages
+      .slice(-5) // Last 5 messages
+      .map(m => `${m.role === 'user' ? 'User' : 'Bot'}: ${m.content.slice(0, 150)}${m.content.length > 150 ? '...' : ''}`)
+      .join('\n');
+    prompt += `
+RECENT CONVERSATION (for context):
+${recentHistory}
+
+Use this context to understand references like "the others", "that one", "the first option", etc.
 `;
   }
 

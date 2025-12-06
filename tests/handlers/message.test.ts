@@ -65,6 +65,11 @@ describe('MessageHandler', () => {
         getPendingResults: vi.fn().mockReturnValue([]),
         getSelectedMedia: vi.fn().mockReturnValue(null),
         resetSession: vi.fn(),
+        addMessage: vi.fn(),
+        getRecentMessages: vi.fn().mockReturnValue([]),
+        removeFromPendingResults: vi.fn(),
+        setResultSource: vi.fn(),
+        getResultSource: vi.fn().mockReturnValue(null),
       },
       twilio: {
         sendMessage: vi.fn().mockResolvedValue('SM123'),

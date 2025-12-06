@@ -13,11 +13,14 @@ export {
   SessionDataSchema,
   RecommendationType,
   RecommendationParamsSchema,
+  ConversationMessageSchema,
+  ResultSource,
   type ParsedRequest,
   type AIParseResponse,
   type MediaSearchResult,
   type SessionData,
   type RecommendationParams,
+  type ConversationMessage,
 } from './media.schema.js';
 
 // Twilio schemas

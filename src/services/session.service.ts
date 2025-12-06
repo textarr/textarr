@@ -1,7 +1,9 @@
 import type { Logger } from '../utils/logger.js';
-import type { MediaSearchResult, ConversationState, SessionData, Platform } from '../schemas/index.js';
+import type { MediaSearchResult, ConversationState, SessionData, Platform, ConversationMessage } from '../schemas/index.js';
 import type { PlatformUserId } from '../messaging/types.js';
 import { parsePlatformUserId } from '../messaging/types.js';
+
+type ResultSourceType = 'search' | 'recommendation';
 
 /**
  * Session manager for tracking conversation state per user
@@ -98,14 +100,64 @@ export class SessionService {
 
   /**
    * Reset session to idle state
+   * Preserves recentMessages for context, clears everything else
    */
   resetSession(userId: PlatformUserId): void {
     const session = this.getSession(userId);
     session.state = 'idle';
     session.pendingResults = [];
     session.selectedMedia = null;
+    session.resultSource = null;
     session.lastActivity = new Date();
+    // Note: recentMessages is preserved for context
     this.logger.debug({ userId }, 'Reset session');
+  }
+
+  /**
+   * Add a message to conversation history (keeps last 10)
+   */
+  addMessage(userId: PlatformUserId, role: 'user' | 'assistant', content: string): void {
+    const session = this.getSession(userId);
+    session.recentMessages.push({ role, content });
+    // Keep only last 10 messages
+    if (session.recentMessages.length > 10) {
+      session.recentMessages.shift();
+    }
+    session.lastActivity = new Date();
+  }
+
+  /**
+   * Get recent messages for AI context
+   */
+  getRecentMessages(userId: PlatformUserId): ConversationMessage[] {
+    return this.getSession(userId).recentMessages;
+  }
+
+  /**
+   * Remove a specific item from pending results
+   */
+  removeFromPendingResults(userId: PlatformUserId, mediaId: number): void {
+    const session = this.getSession(userId);
+    session.pendingResults = session.pendingResults.filter(r => r.id !== mediaId);
+    session.lastActivity = new Date();
+    this.logger.debug({ userId, mediaId, remaining: session.pendingResults.length }, 'Removed from pending results');
+  }
+
+  /**
+   * Set the source of current results
+   */
+  setResultSource(userId: PlatformUserId, source: ResultSourceType): void {
+    const session = this.getSession(userId);
+    session.resultSource = source;
+    session.lastActivity = new Date();
+    this.logger.debug({ userId, source }, 'Set result source');
+  }
+
+  /**
+   * Get the source of current results
+   */
+  getResultSource(userId: PlatformUserId): ResultSourceType | null {
+    return this.getSession(userId).resultSource;
   }
 
   /**
@@ -129,6 +181,8 @@ export class SessionService {
       selectedMedia: null,
       lastActivity: new Date(),
       context: {},
+      recentMessages: [],
+      resultSource: null,
     };
   }
 

@@ -204,6 +204,21 @@ export const Platform = z.enum(['sms', 'discord', 'slack', 'telegram']);
 export type Platform = z.infer<typeof Platform>;
 
 /**
+ * Conversation message for history tracking
+ */
+export const ConversationMessageSchema = z.object({
+  role: z.enum(['user', 'assistant']),
+  content: z.string(),
+});
+export type ConversationMessage = z.infer<typeof ConversationMessageSchema>;
+
+/**
+ * Source of search results (for preserving recommendation lists)
+ */
+export const ResultSource = z.enum(['search', 'recommendation']);
+export type ResultSource = z.infer<typeof ResultSource>;
+
+/**
  * Session data for a user
  */
 export const SessionDataSchema = z.object({
@@ -214,5 +229,7 @@ export const SessionDataSchema = z.object({
   selectedMedia: MediaSearchResultSchema.nullable(),
   lastActivity: z.date(),
   context: z.record(z.unknown()),
+  recentMessages: z.array(ConversationMessageSchema).default([]), // Last 10 messages for context
+  resultSource: ResultSource.nullable().default(null), // Track if results from search or recommendation
 });
 export type SessionData = z.infer<typeof SessionDataSchema>;
