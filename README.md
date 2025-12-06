@@ -17,7 +17,7 @@ A multi-platform messaging bot that lets you request movies and TV shows using n
 
 ### Prerequisites
 
-- Bun 1.0+
+- Node.js 22+
 - At least one messaging platform:
   - Twilio account (for SMS)
   - Telegram Bot Token
@@ -34,10 +34,10 @@ git clone https://github.com/yourusername/textarr.git
 cd textarr
 
 # Install dependencies
-bun install
+npm install
 
 # Start the application
-bun run dev
+npm run dev
 
 # Open http://localhost:3030 to configure
 ```
@@ -46,7 +46,7 @@ bun run dev
 
 **Option 1: Web Interface (Recommended)**
 
-1. Start the application: `bun run dev`
+1. Start the application: `npm run dev`
 2. Open http://localhost:3030
 3. Fill in your configuration
 4. Click "Save Configuration"
@@ -321,25 +321,25 @@ Supported models:
 
 ```bash
 # Run in development mode (with hot reload)
-bun run dev
+npm run dev
 
 # Run tests
-bun test
+npm test
 
 # Run tests with coverage
-bun test --coverage
+npm run test:coverage
 
 # Lint
-bun run lint
+npm run lint
 
 # Format
-bun run format
+npm run format
 
 # Type check
-bun run typecheck
+npm run typecheck
 
 # Build for production
-bun run build
+npm run build
 ```
 
 ## Deployment
@@ -499,10 +499,10 @@ Cloudflare Tunnel (formerly Argo Tunnel) provides a similar solution using Cloud
 
 ```bash
 # Build
-bun run build
+npm run build
 
 # Start
-NODE_ENV=production bun dist/index.js
+NODE_ENV=production node dist/index.js
 ```
 
 ## API Endpoints
@@ -600,13 +600,13 @@ Each user can have multiple platform identities:
 
 ## Tech Stack
 
-- **Runtime**: Bun 1.0+
+- **Runtime**: Node.js 22
 - **Language**: TypeScript 5.7
 - **Framework**: Fastify 5
 - **AI SDK**: Vercel AI SDK 5 (OpenAI/Anthropic/Google)
 - **Validation**: Zod
 - **Messaging**: Twilio (SMS), grammy (Telegram), discord.js (Discord), @slack/bolt (Slack)
-- **Testing**: Bun Test
+- **Testing**: Vitest
 
 ## Security
 

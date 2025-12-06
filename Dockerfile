@@ -1,37 +1,44 @@
 # Build stage
-FROM oven/bun:1 AS builder
+FROM node:22-slim AS builder
 
 WORKDIR /app
 
 # Copy package files
-COPY package.json bun.lock* ./
+COPY package.json package-lock.json* ./
 
 # Install dependencies
-RUN bun install --frozen-lockfile
+RUN npm ci
 
 # Copy source
 COPY tsconfig.json ./
 COPY src ./src
 
 # Build
-RUN bun build src/index.ts --outdir dist --target bun
+RUN npm run build
 
 # Production stage
-FROM oven/bun:1-slim AS production
+FROM node:22-slim AS production
 
 WORKDIR /app
 
-# Install gosu for dropping privileges
+# Install build dependencies for native modules (sodium-native, bcrypt)
+# Also install gosu for dropping privileges
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    make \
+    g++ \
     wget \
     gosu \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy package files
-COPY package.json bun.lock* ./
+COPY package.json package-lock.json* ./
 
 # Install production dependencies only
-RUN bun install --frozen-lockfile --production
+RUN npm ci --omit=dev
+
+# Remove build dependencies to reduce image size
+RUN apt-get update && apt-get remove -y python3 make g++ && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
 
 # Copy built files
 COPY --from=builder /app/dist ./dist
@@ -43,9 +50,10 @@ COPY public ./public
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
-# Create bun user if it doesn't exist and config directory
-RUN id -u bun &>/dev/null || useradd -m -s /bin/bash bun && \
-    mkdir -p /app/config
+# Use existing node user (UID/GID 1000) - will be modified at runtime to match PUID/PGID
+
+# Create config directory
+RUN mkdir -p /app/config
 
 # Expose port
 EXPOSE 3030
@@ -56,4 +64,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 
 # Use entrypoint to handle PUID/PGID
 ENTRYPOINT ["/docker-entrypoint.sh"]
-CMD ["bun", "dist/index.js"]
+CMD ["node", "dist/index.js"]

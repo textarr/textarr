@@ -7,15 +7,15 @@ PGID=${PGID:-1000}
 
 echo "Starting with UID: $PUID, GID: $PGID"
 
-# Update bun group to match PGID (do group first, like LinuxServer)
-groupmod -o -g "$PGID" bun
+# Update node group to match PGID (do group first, like LinuxServer)
+groupmod -o -g "$PGID" node
 
-# Update bun user to match PUID
-usermod -o -u "$PUID" bun
+# Update node user to match PUID
+usermod -o -u "$PUID" node
 
 # Ensure config directory exists and has correct ownership
 mkdir -p /app/config
-chown bun:bun /app/config
+chown node:node /app/config
 
-# Run as bun user using gosu
-exec gosu bun "$@"
+# Run as node user using gosu
+exec gosu node "$@"
