@@ -79,6 +79,42 @@ describe('MessageHandler', () => {
         searchMulti: vi.fn().mockResolvedValue([]),
         getTvdbId: vi.fn().mockResolvedValue(12345),
         detectAnime: vi.fn().mockResolvedValue('regular'),
+        getCredits: vi.fn().mockResolvedValue({
+          cast: [{ name: 'Actor 1', character: 'Character 1' }],
+          crew: [{ name: 'Director 1', job: 'Director' }],
+        }),
+        getTrailerUrl: vi.fn().mockResolvedValue('https://www.youtube.com/watch?v=abc123'),
+        getWatchProviders: vi.fn().mockResolvedValue({
+          flatrate: ['Netflix'],
+          rent: ['Amazon'],
+          buy: ['Apple TV'],
+          link: 'https://tmdb.org',
+        }),
+        getMovieCertification: vi.fn().mockResolvedValue('R'),
+        getTvContentRating: vi.fn().mockResolvedValue('TV-MA'),
+        getReviews: vi.fn().mockResolvedValue({
+          reviews: [{ author: 'Reviewer', content: 'Great!', rating: 8 }],
+          total: 1,
+        }),
+        getCollection: vi.fn().mockResolvedValue({
+          name: 'Test Collection',
+          parts: [{ id: 1, title: 'Movie 1', release_date: '2020-01-01', vote_average: 8.0 }],
+        }),
+        getMovieDetailsExtended: vi.fn().mockResolvedValue({
+          budget: 100000000,
+          revenue: 500000000,
+          runtime: 120,
+          genres: [{ name: 'Action' }],
+          belongs_to_collection: { id: 1, name: 'Test Collection' },
+        }),
+        getTvDetailsExtended: vi.fn().mockResolvedValue({
+          status: 'Ended',
+          number_of_seasons: 5,
+          number_of_episodes: 62,
+          genres: [{ name: 'Drama' }],
+          next_episode_to_air: null,
+          last_episode_to_air: { air_date: '2020-01-01', episode_number: 10, season_number: 5, name: 'Finale' },
+        }),
       },
       user: {
         isAuthorized: vi.fn().mockReturnValue(true),
@@ -124,7 +160,7 @@ describe('MessageHandler', () => {
         animeQualityProfileId: 2,
         animeTagIds: [1],
       },
-      tmdb: { apiKey: 'test', language: 'en' },
+      tmdb: { apiKey: 'test', language: 'en', watchRegion: 'US' },
       users: [{
         id: 'test-uuid',
         name: 'Test User',
@@ -189,6 +225,9 @@ Commands:
 • "Help" - Show this message`,
         adminHelpText: `Admin Commands:
 • "admin list" - List all users`,
+        noMediaContext: "I'm not sure which movie or TV show you're asking about.",
+        noRecommendations: "Couldn't find any recommendations.",
+        acknowledgmentEnabled: false,
       },
     } as Config;
 
@@ -472,6 +511,369 @@ Commands:
         expect.objectContaining({ animeStatus: 'regular' }),
         expect.objectContaining({ monitor: 'all' })
       );
+    });
+  });
+
+  // ============================================
+  // MEDIA INFO ACTION TESTS
+  // ============================================
+
+  describe('get_cast command', () => {
+    it('should return cast info when media is selected', async () => {
+      const selectedMedia = createMockMedia({ title: 'Fight Club', year: 1999 });
+      vi.mocked(mockServices.session.getSelectedMedia).mockReturnValue(selectedMedia);
+
+      vi.mocked(mockServices.ai.parseMessage).mockResolvedValue({
+        mediaType: 'unknown',
+        title: null,
+        year: null,
+        action: 'get_cast',
+        selectionNumber: null,
+        confidence: 1.0,
+        rawMessage: "who's in it?",
+      });
+
+      const response = await handler.handleMessage(testUserId, "who's in it?");
+
+      expect(response.text).toContain('Cast');
+      expect(response.text).toContain('Actor 1');
+      expect(response.text).toContain('Character 1');
+      expect(response.text).toContain('Director');
+    });
+
+    it('should return error when no media context', async () => {
+      vi.mocked(mockServices.session.getSelectedMedia).mockReturnValue(null);
+
+      vi.mocked(mockServices.ai.parseMessage).mockResolvedValue({
+        mediaType: 'unknown',
+        title: null,
+        year: null,
+        action: 'get_cast',
+        selectionNumber: null,
+        confidence: 1.0,
+        rawMessage: "who's in it?",
+      });
+
+      const response = await handler.handleMessage(testUserId, "who's in it?");
+
+      expect(response.text).toContain("I'm not sure which movie");
+    });
+
+    it('should search for title when provided', async () => {
+      vi.mocked(mockServices.session.getSelectedMedia).mockReturnValue(null);
+      vi.mocked(mockServices.tmdb.searchMulti).mockResolvedValue([
+        createMockMedia({ title: 'Breaking Bad', mediaType: 'tv_show' }),
+      ]);
+
+      vi.mocked(mockServices.ai.parseMessage).mockResolvedValue({
+        mediaType: 'unknown',
+        title: 'Breaking Bad',
+        year: null,
+        action: 'get_cast',
+        selectionNumber: null,
+        confidence: 1.0,
+        rawMessage: "who's in Breaking Bad?",
+      });
+
+      const response = await handler.handleMessage(testUserId, "who's in Breaking Bad?");
+
+      expect(response.text).toContain('Cast');
+      expect(mockServices.tmdb.searchMulti).toHaveBeenCalledWith('Breaking Bad');
+    });
+  });
+
+  describe('get_trailer command', () => {
+    it('should return trailer URL', async () => {
+      const selectedMedia = createMockMedia({ title: 'Inception', year: 2010 });
+      vi.mocked(mockServices.session.getSelectedMedia).mockReturnValue(selectedMedia);
+
+      vi.mocked(mockServices.ai.parseMessage).mockResolvedValue({
+        mediaType: 'unknown',
+        title: null,
+        year: null,
+        action: 'get_trailer',
+        selectionNumber: null,
+        confidence: 1.0,
+        rawMessage: 'show me the trailer',
+      });
+
+      const response = await handler.handleMessage(testUserId, 'show me the trailer');
+
+      expect(response.text).toContain('Trailer');
+      expect(response.text).toContain('youtube.com');
+    });
+
+    it('should handle no trailer found', async () => {
+      const selectedMedia = createMockMedia({ title: 'Old Movie', year: 1950 });
+      vi.mocked(mockServices.session.getSelectedMedia).mockReturnValue(selectedMedia);
+      vi.mocked(mockServices.tmdb.getTrailerUrl).mockResolvedValue(null);
+
+      vi.mocked(mockServices.ai.parseMessage).mockResolvedValue({
+        mediaType: 'unknown',
+        title: null,
+        year: null,
+        action: 'get_trailer',
+        selectionNumber: null,
+        confidence: 1.0,
+        rawMessage: 'trailer',
+      });
+
+      const response = await handler.handleMessage(testUserId, 'trailer');
+
+      expect(response.text).toContain('No trailer found');
+    });
+  });
+
+  describe('where_to_watch command', () => {
+    it('should return streaming providers', async () => {
+      const selectedMedia = createMockMedia({ title: 'Breaking Bad', mediaType: 'tv_show' });
+      vi.mocked(mockServices.session.getSelectedMedia).mockReturnValue(selectedMedia);
+
+      vi.mocked(mockServices.ai.parseMessage).mockResolvedValue({
+        mediaType: 'unknown',
+        title: null,
+        year: null,
+        action: 'where_to_watch',
+        selectionNumber: null,
+        confidence: 1.0,
+        rawMessage: 'where can I watch this?',
+      });
+
+      const response = await handler.handleMessage(testUserId, 'where can I watch this?');
+
+      expect(response.text).toContain('Netflix');
+      expect(response.text).toContain('Stream');
+    });
+  });
+
+  describe('get_details command', () => {
+    it('should return movie details', async () => {
+      const selectedMedia = createMockMedia({ title: 'Fight Club', year: 1999, overview: 'A movie about fight club' });
+      vi.mocked(mockServices.session.getSelectedMedia).mockReturnValue(selectedMedia);
+
+      vi.mocked(mockServices.ai.parseMessage).mockResolvedValue({
+        mediaType: 'unknown',
+        title: null,
+        year: null,
+        action: 'get_details',
+        selectionNumber: null,
+        confidence: 1.0,
+        rawMessage: 'tell me about this',
+      });
+
+      const response = await handler.handleMessage(testUserId, 'tell me about this');
+
+      expect(response.text).toContain('Fight Club');
+      expect(response.text).toContain('120 min');
+      expect(response.text).toContain('Action');
+    });
+
+    it('should return TV show details', async () => {
+      const selectedMedia = createMockMedia({ title: 'Breaking Bad', mediaType: 'tv_show', overview: 'A chemistry teacher' });
+      vi.mocked(mockServices.session.getSelectedMedia).mockReturnValue(selectedMedia);
+
+      vi.mocked(mockServices.ai.parseMessage).mockResolvedValue({
+        mediaType: 'unknown',
+        title: null,
+        year: null,
+        action: 'get_details',
+        selectionNumber: null,
+        confidence: 1.0,
+        rawMessage: 'more info',
+      });
+
+      const response = await handler.handleMessage(testUserId, 'more info');
+
+      expect(response.text).toContain('Breaking Bad');
+      expect(response.text).toContain('Seasons: 5');
+      expect(response.text).toContain('Ended');
+    });
+  });
+
+  describe('get_content_rating command', () => {
+    it('should return movie rating', async () => {
+      const selectedMedia = createMockMedia({ title: 'Deadpool', year: 2016 });
+      vi.mocked(mockServices.session.getSelectedMedia).mockReturnValue(selectedMedia);
+
+      vi.mocked(mockServices.ai.parseMessage).mockResolvedValue({
+        mediaType: 'unknown',
+        title: null,
+        year: null,
+        action: 'get_content_rating',
+        selectionNumber: null,
+        confidence: 1.0,
+        rawMessage: "what's it rated?",
+      });
+
+      const response = await handler.handleMessage(testUserId, "what's it rated?");
+
+      expect(response.text).toContain('rated R');
+      expect(response.text).toContain('Mature audiences');
+    });
+
+    it('should return TV rating', async () => {
+      const selectedMedia = createMockMedia({ title: 'Breaking Bad', mediaType: 'tv_show' });
+      vi.mocked(mockServices.session.getSelectedMedia).mockReturnValue(selectedMedia);
+
+      vi.mocked(mockServices.ai.parseMessage).mockResolvedValue({
+        mediaType: 'unknown',
+        title: null,
+        year: null,
+        action: 'get_content_rating',
+        selectionNumber: null,
+        confidence: 1.0,
+        rawMessage: 'is it appropriate for kids?',
+      });
+
+      const response = await handler.handleMessage(testUserId, 'is it appropriate for kids?');
+
+      expect(response.text).toContain('TV-MA');
+    });
+  });
+
+  describe('get_reviews command', () => {
+    it('should return reviews and rating', async () => {
+      const selectedMedia = createMockMedia({ title: 'Inception', year: 2010, rating: 8.4 });
+      vi.mocked(mockServices.session.getSelectedMedia).mockReturnValue(selectedMedia);
+
+      vi.mocked(mockServices.ai.parseMessage).mockResolvedValue({
+        mediaType: 'unknown',
+        title: null,
+        year: null,
+        action: 'get_reviews',
+        selectionNumber: null,
+        confidence: 1.0,
+        rawMessage: 'is it good?',
+      });
+
+      const response = await handler.handleMessage(testUserId, 'is it good?');
+
+      expect(response.text).toContain('8.4');
+      expect(response.text).toContain('Reviewer');
+    });
+  });
+
+  describe('get_collection command', () => {
+    it('should return movie collection', async () => {
+      const selectedMedia = createMockMedia({ title: 'The Dark Knight', year: 2008 });
+      vi.mocked(mockServices.session.getSelectedMedia).mockReturnValue(selectedMedia);
+
+      vi.mocked(mockServices.ai.parseMessage).mockResolvedValue({
+        mediaType: 'unknown',
+        title: null,
+        year: null,
+        action: 'get_collection',
+        selectionNumber: null,
+        confidence: 1.0,
+        rawMessage: 'what other movies in this series?',
+      });
+
+      const response = await handler.handleMessage(testUserId, 'what other movies in this series?');
+
+      expect(response.text).toContain('Test Collection');
+      expect(response.text).toContain('Movie 1');
+    });
+
+    it('should error for TV shows', async () => {
+      const selectedMedia = createMockMedia({ title: 'Breaking Bad', mediaType: 'tv_show' });
+      vi.mocked(mockServices.session.getSelectedMedia).mockReturnValue(selectedMedia);
+
+      vi.mocked(mockServices.ai.parseMessage).mockResolvedValue({
+        mediaType: 'unknown',
+        title: null,
+        year: null,
+        action: 'get_collection',
+        selectionNumber: null,
+        confidence: 1.0,
+        rawMessage: 'movies in this series?',
+      });
+
+      const response = await handler.handleMessage(testUserId, 'movies in this series?');
+
+      expect(response.text).toContain('Collections are only available for movies');
+    });
+  });
+
+  describe('next_episode command', () => {
+    it('should return next episode info', async () => {
+      const selectedMedia = createMockMedia({ title: 'Breaking Bad', mediaType: 'tv_show' });
+      vi.mocked(mockServices.session.getSelectedMedia).mockReturnValue(selectedMedia);
+
+      vi.mocked(mockServices.ai.parseMessage).mockResolvedValue({
+        mediaType: 'unknown',
+        title: null,
+        year: null,
+        action: 'next_episode',
+        selectionNumber: null,
+        confidence: 1.0,
+        rawMessage: "when's the next episode?",
+      });
+
+      const response = await handler.handleMessage(testUserId, "when's the next episode?");
+
+      expect(response.text).toContain('Ended');
+      expect(response.text).toContain('Total Seasons: 5');
+    });
+
+    it('should error for movies', async () => {
+      const selectedMedia = createMockMedia({ title: 'Inception', mediaType: 'movie' });
+      vi.mocked(mockServices.session.getSelectedMedia).mockReturnValue(selectedMedia);
+
+      vi.mocked(mockServices.ai.parseMessage).mockResolvedValue({
+        mediaType: 'unknown',
+        title: null,
+        year: null,
+        action: 'next_episode',
+        selectionNumber: null,
+        confidence: 1.0,
+        rawMessage: "when's the next episode?",
+      });
+
+      const response = await handler.handleMessage(testUserId, "when's the next episode?");
+
+      expect(response.text).toContain('only available for TV shows');
+    });
+  });
+
+  describe('box_office command', () => {
+    it('should return box office info', async () => {
+      const selectedMedia = createMockMedia({ title: 'Avatar', year: 2009 });
+      vi.mocked(mockServices.session.getSelectedMedia).mockReturnValue(selectedMedia);
+
+      vi.mocked(mockServices.ai.parseMessage).mockResolvedValue({
+        mediaType: 'unknown',
+        title: null,
+        year: null,
+        action: 'box_office',
+        selectionNumber: null,
+        confidence: 1.0,
+        rawMessage: 'how much did it make?',
+      });
+
+      const response = await handler.handleMessage(testUserId, 'how much did it make?');
+
+      expect(response.text).toContain('Budget');
+      expect(response.text).toContain('Box Office');
+      expect(response.text).toContain('$500.0M');
+    });
+
+    it('should error for TV shows', async () => {
+      const selectedMedia = createMockMedia({ title: 'Breaking Bad', mediaType: 'tv_show' });
+      vi.mocked(mockServices.session.getSelectedMedia).mockReturnValue(selectedMedia);
+
+      vi.mocked(mockServices.ai.parseMessage).mockResolvedValue({
+        mediaType: 'unknown',
+        title: null,
+        year: null,
+        action: 'box_office',
+        selectionNumber: null,
+        confidence: 1.0,
+        rawMessage: 'box office?',
+      });
+
+      const response = await handler.handleMessage(testUserId, 'box office?');
+
+      expect(response.text).toContain('only available for movies');
     });
   });
 });
