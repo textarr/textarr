@@ -222,6 +222,7 @@ export const AppConfigSchema = z.object({
     // Search
     noResults: z.string().default('No results found for "{query}". Try checking the spelling or being more specific.'),
     searchResults: z.string().default('Found {count} results for "{query}":'),
+    remainingResults: z.string().default('Here are the other results from your search:'),
     selectPrompt: z.string().default('Reply with a number, or search for something else.'),
 
     // Recommendations

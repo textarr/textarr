@@ -615,6 +615,43 @@ export class MessageHandler {
   }
 
   /**
+   * Format remaining results prompt (after adding from recommendations)
+   */
+  private formatRemainingResultsPrompt(results: MediaSearchResult[]): string {
+    const lines = [`${this.config.messages.remainingResults}\n`];
+
+    results.forEach((result, index) => {
+      const emoji = getMediaEmoji(result.mediaType);
+      const year = result.year ? ` (${result.year})` : '';
+      const rating = result.rating ? ` ${EMOJI.star}${result.rating.toFixed(1)}` : '';
+
+      let statusIndicator = '';
+      if (result.inLibrary) {
+        switch (result.libraryStatus) {
+          case 'available':
+            statusIndicator = ` ${EMOJI.check}`;
+            break;
+          case 'partial': {
+            const pct = result.episodeStats?.percentComplete ?? 0;
+            statusIndicator = ` (${Math.round(pct)}%)`;
+            break;
+          }
+          case 'monitored':
+            statusIndicator = ` ${EMOJI.wait}`;
+            break;
+          default:
+            statusIndicator = ` ${EMOJI.check}`;
+        }
+      }
+
+      lines.push(`${index + 1}. ${emoji} ${result.title}${year}${rating}${statusIndicator}`);
+    });
+
+    lines.push(`\n${this.config.messages.selectPrompt}`);
+    return lines.join('\n');
+  }
+
+  /**
    * Format already in library message with detailed status
    */
   private formatAlreadyInLibrary(media: MediaSearchResult): string {
@@ -798,7 +835,7 @@ export class MessageHandler {
           this.services.session.setState(userId, 'awaiting_selection');
           const addedMsg = this.formatAddedMessage(media, isAnime);
           return {
-            text: addedMsg.text + '\n\n' + this.formatSelectionPrompt(remaining, 'remaining'),
+            text: addedMsg.text + '\n\n' + this.formatRemainingResultsPrompt(remaining),
           };
         }
       }

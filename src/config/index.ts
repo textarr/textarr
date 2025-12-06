@@ -124,6 +124,7 @@ export interface Config {
     // Search
     noResults: string;
     searchResults: string;
+    remainingResults: string;
     selectPrompt: string;
     // Recommendations
     noRecommendations: string;

@@ -122,6 +122,7 @@ export function buildRuntimeConfig(appConfig: AppConfig): Config {
       selectRange: appConfig.messages.selectRange,
       noResults: appConfig.messages.noResults,
       searchResults: appConfig.messages.searchResults,
+      remainingResults: appConfig.messages.remainingResults,
       selectPrompt: appConfig.messages.selectPrompt,
       noRecommendations: appConfig.messages.noRecommendations,
       confirmPrompt: appConfig.messages.confirmPrompt,
