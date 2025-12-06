@@ -137,6 +137,7 @@ export const AppConfigSchema = z.object({
   tmdb: z.object({
     apiKey: z.string().default(''),
     language: z.string().default('en'),
+    watchRegion: z.string().default('US'),
   }).default({}),
 
   // Users
@@ -299,6 +300,9 @@ User IDs by platform:
 • Telegram: telegram:123456789
 • Discord: discord:123456789012345678
 • Slack: slack:U0123456789`),
+
+    // Media info
+    noMediaContext: z.string().default("I'm not sure which movie or TV show you're asking about. Try including the title, like 'Who's in Breaking Bad?' or 'Trailer for Inception'"),
   }).default({}),
 
   // Media requests tracking (for download notifications)

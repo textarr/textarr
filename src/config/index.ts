@@ -77,6 +77,7 @@ export interface Config {
   tmdb: {
     apiKey: string;
     language: string;
+    watchRegion: string;
   };
   users: User[];
   quotas: {
@@ -163,6 +164,8 @@ export interface Config {
     // Help
     helpText: string;
     adminHelpText: string;
+    // Media info
+    noMediaContext: string;
   };
 }
 

@@ -19,6 +19,13 @@ export const EMOJI = {
   wait: '⏳',
   crown: '👑',
   phone: '📱',
+  // Media info emoji
+  cast: '🎭',
+  trailer: '🎥',
+  streaming: '📡',
+  rating: '🔞',
+  collection: '📚',
+  money: '💰',
 } as const;
 
 // Session state labels for user-facing messages

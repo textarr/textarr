@@ -65,6 +65,131 @@ interface TMDBTvDetails {
   genres: TMDBGenre[];
   origin_country: string[];
   production_countries?: TMDBProductionCountry[];
+  status?: string;
+  next_episode_to_air?: {
+    air_date: string;
+    episode_number: number;
+    season_number: number;
+    name: string;
+  } | null;
+  last_episode_to_air?: {
+    air_date: string;
+    episode_number: number;
+    season_number: number;
+    name: string;
+  } | null;
+  number_of_seasons?: number;
+  number_of_episodes?: number;
+  created_by?: { name: string }[];
+}
+
+/** Extended movie details for box office info */
+interface TMDBMovieDetailsExtended extends TMDBMovieDetails {
+  budget?: number;
+  revenue?: number;
+  runtime?: number;
+  release_date?: string;
+  tagline?: string;
+  belongs_to_collection?: {
+    id: number;
+    name: string;
+    poster_path: string | null;
+  } | null;
+}
+
+/** Credits response */
+export interface TMDBCredits {
+  id: number;
+  cast: {
+    id: number;
+    name: string;
+    character: string;
+    profile_path: string | null;
+    order: number;
+  }[];
+  crew: {
+    id: number;
+    name: string;
+    job: string;
+    department: string;
+    profile_path: string | null;
+  }[];
+}
+
+/** Videos response */
+export interface TMDBVideos {
+  id: number;
+  results: {
+    id: string;
+    key: string;
+    name: string;
+    site: string;
+    type: string;
+    official: boolean;
+  }[];
+}
+
+/** Watch providers response */
+export interface TMDBWatchProviders {
+  id: number;
+  results: Record<string, {
+    link?: string;
+    flatrate?: { provider_id: number; provider_name: string; logo_path: string }[];
+    rent?: { provider_id: number; provider_name: string; logo_path: string }[];
+    buy?: { provider_id: number; provider_name: string; logo_path: string }[];
+  }>;
+}
+
+/** Movie release dates (for certifications) */
+export interface TMDBReleaseDates {
+  id: number;
+  results: {
+    iso_3166_1: string;
+    release_dates: {
+      certification: string;
+      type: number;
+      release_date: string;
+    }[];
+  }[];
+}
+
+/** TV content ratings */
+export interface TMDBContentRatings {
+  id: number;
+  results: {
+    iso_3166_1: string;
+    rating: string;
+  }[];
+}
+
+/** Reviews response */
+export interface TMDBReviews {
+  id: number;
+  results: {
+    id: string;
+    author: string;
+    content: string;
+    created_at: string;
+    author_details: {
+      rating: number | null;
+    };
+  }[];
+  total_results: number;
+}
+
+/** Collection response */
+export interface TMDBCollection {
+  id: number;
+  name: string;
+  overview: string;
+  poster_path: string | null;
+  parts: {
+    id: number;
+    title: string;
+    release_date: string;
+    poster_path: string | null;
+    vote_average: number;
+  }[];
 }
 
 /** Animation genre ID in TMDB (same for movies and TV) */
@@ -667,6 +792,205 @@ export class TMDBService {
       this.logger.error({ error, query }, 'Keyword search failed');
       throw error;
     }
+  }
+
+  // ============================================
+  // NEW MEDIA INFO METHODS
+  // ============================================
+
+  /**
+   * Get credits (cast and crew) for a movie or TV show
+   */
+  async getCredits(tmdbId: number, mediaType: 'movie' | 'tv'): Promise<TMDBCredits> {
+    this.logger.debug({ tmdbId, mediaType }, 'Fetching credits');
+
+    // TV uses aggregate_credits for all seasons, movies use regular credits
+    const endpoint = mediaType === 'movie'
+      ? `/movie/${tmdbId}/credits`
+      : `/tv/${tmdbId}/aggregate_credits`;
+
+    return this.get<TMDBCredits>(endpoint);
+  }
+
+  /**
+   * Get videos (trailers, teasers, etc.) for a movie or TV show
+   */
+  async getVideos(tmdbId: number, mediaType: 'movie' | 'tv'): Promise<TMDBVideos> {
+    this.logger.debug({ tmdbId, mediaType }, 'Fetching videos');
+
+    const endpoint = mediaType === 'movie'
+      ? `/movie/${tmdbId}/videos`
+      : `/tv/${tmdbId}/videos`;
+
+    return this.get<TMDBVideos>(endpoint);
+  }
+
+  /**
+   * Get the official YouTube trailer URL for a movie or TV show
+   * Returns null if no trailer found
+   */
+  async getTrailerUrl(tmdbId: number, mediaType: 'movie' | 'tv'): Promise<string | null> {
+    try {
+      const videos = await this.getVideos(tmdbId, mediaType);
+
+      // Prioritize: Official Trailer > Trailer > Teaser
+      const trailer = videos.results.find(
+        (v) => v.site === 'YouTube' && v.type === 'Trailer' && v.official
+      ) ?? videos.results.find(
+        (v) => v.site === 'YouTube' && v.type === 'Trailer'
+      ) ?? videos.results.find(
+        (v) => v.site === 'YouTube' && v.type === 'Teaser'
+      );
+
+      if (trailer) {
+        return `https://www.youtube.com/watch?v=${trailer.key}`;
+      }
+
+      return null;
+    } catch (error) {
+      this.logger.error({ error, tmdbId, mediaType }, 'Failed to get trailer');
+      return null;
+    }
+  }
+
+  /**
+   * Get watch providers (streaming services) for a movie or TV show
+   */
+  async getWatchProviders(
+    tmdbId: number,
+    mediaType: 'movie' | 'tv',
+    region: string = 'US'
+  ): Promise<{
+    flatrate: string[];
+    rent: string[];
+    buy: string[];
+    link: string | null;
+  }> {
+    this.logger.debug({ tmdbId, mediaType, region }, 'Fetching watch providers');
+
+    const endpoint = mediaType === 'movie'
+      ? `/movie/${tmdbId}/watch/providers`
+      : `/tv/${tmdbId}/watch/providers`;
+
+    try {
+      const response = await this.get<TMDBWatchProviders>(endpoint);
+      const regionData = response.results[region];
+
+      if (!regionData) {
+        return { flatrate: [], rent: [], buy: [], link: null };
+      }
+
+      return {
+        flatrate: regionData.flatrate?.map((p) => p.provider_name) ?? [],
+        rent: regionData.rent?.map((p) => p.provider_name) ?? [],
+        buy: regionData.buy?.map((p) => p.provider_name) ?? [],
+        link: regionData.link ?? null,
+      };
+    } catch (error) {
+      this.logger.error({ error, tmdbId, mediaType, region }, 'Failed to get watch providers');
+      return { flatrate: [], rent: [], buy: [], link: null };
+    }
+  }
+
+  /**
+   * Get movie certification (PG-13, R, etc.)
+   */
+  async getMovieCertification(tmdbId: number, region: string = 'US'): Promise<string | null> {
+    this.logger.debug({ tmdbId, region }, 'Fetching movie certification');
+
+    try {
+      const response = await this.get<TMDBReleaseDates>(`/movie/${tmdbId}/release_dates`);
+      const regionData = response.results.find((r) => r.iso_3166_1 === region);
+
+      if (!regionData) return null;
+
+      // Find theatrical or digital release with certification
+      const releaseWithCert = regionData.release_dates.find(
+        (r) => r.certification && (r.type === 3 || r.type === 4) // 3=Theatrical, 4=Digital
+      ) ?? regionData.release_dates.find((r) => r.certification);
+
+      return releaseWithCert?.certification || null;
+    } catch (error) {
+      this.logger.error({ error, tmdbId, region }, 'Failed to get movie certification');
+      return null;
+    }
+  }
+
+  /**
+   * Get TV content rating (TV-MA, TV-14, etc.)
+   */
+  async getTvContentRating(tmdbId: number, region: string = 'US'): Promise<string | null> {
+    this.logger.debug({ tmdbId, region }, 'Fetching TV content rating');
+
+    try {
+      const response = await this.get<TMDBContentRatings>(`/tv/${tmdbId}/content_ratings`);
+      const regionData = response.results.find((r) => r.iso_3166_1 === region);
+
+      return regionData?.rating || null;
+    } catch (error) {
+      this.logger.error({ error, tmdbId, region }, 'Failed to get TV content rating');
+      return null;
+    }
+  }
+
+  /**
+   * Get reviews for a movie or TV show
+   */
+  async getReviews(
+    tmdbId: number,
+    mediaType: 'movie' | 'tv'
+  ): Promise<{ reviews: { author: string; content: string; rating: number | null }[]; total: number }> {
+    this.logger.debug({ tmdbId, mediaType }, 'Fetching reviews');
+
+    const endpoint = mediaType === 'movie'
+      ? `/movie/${tmdbId}/reviews`
+      : `/tv/${tmdbId}/reviews`;
+
+    try {
+      const response = await this.get<TMDBReviews>(endpoint);
+
+      return {
+        reviews: response.results.slice(0, 3).map((r) => ({
+          author: r.author,
+          content: r.content.slice(0, 200) + (r.content.length > 200 ? '...' : ''),
+          rating: r.author_details.rating,
+        })),
+        total: response.total_results,
+      };
+    } catch (error) {
+      this.logger.error({ error, tmdbId, mediaType }, 'Failed to get reviews');
+      return { reviews: [], total: 0 };
+    }
+  }
+
+  /**
+   * Get collection (movie franchise) details
+   */
+  async getCollection(collectionId: number): Promise<TMDBCollection | null> {
+    this.logger.debug({ collectionId }, 'Fetching collection');
+
+    try {
+      return await this.get<TMDBCollection>(`/collection/${collectionId}`);
+    } catch (error) {
+      this.logger.error({ error, collectionId }, 'Failed to get collection');
+      return null;
+    }
+  }
+
+  /**
+   * Get extended movie details including box office info
+   */
+  async getMovieDetailsExtended(tmdbId: number): Promise<TMDBMovieDetailsExtended> {
+    this.logger.debug({ tmdbId }, 'Fetching extended movie details');
+    return this.get<TMDBMovieDetailsExtended>(`/movie/${tmdbId}`);
+  }
+
+  /**
+   * Get TV details including next episode info
+   */
+  async getTvDetailsExtended(tmdbId: number): Promise<TMDBTvDetails> {
+    this.logger.debug({ tmdbId }, 'Fetching extended TV details');
+    return this.get<TMDBTvDetails>(`/tv/${tmdbId}`);
   }
 
   /**

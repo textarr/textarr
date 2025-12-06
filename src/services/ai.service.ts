@@ -64,9 +64,19 @@ const AIResponseSchema = z.object({
       'decline',
       'continue',
       'recommend',
+      // Media info actions
+      'get_cast',
+      'get_trailer',
+      'where_to_watch',
+      'get_details',
+      'get_content_rating',
+      'get_reviews',
+      'get_collection',
+      'next_episode',
+      'box_office',
     ])
     .describe(
-      'The action based on message and context. Conversational actions: confirm (yes), cancel (no), select (number), back, restart, show_context, change_selection, decline (ending conversation), continue (wants to add more). Media actions: add, search, status, help, recommend. Anime: anime_confirm, regular_confirm. Season: season_select. Recommendation: recommend (for "what should I watch", "trending", "recommend horror", etc.).'
+      'The action based on message and context. Conversational actions: confirm (yes), cancel (no), select (number), back, restart, show_context, change_selection, decline (ending conversation), continue (wants to add more). Media actions: add, search, status, help, recommend. Anime: anime_confirm, regular_confirm. Season: season_select. Recommendation: recommend (for "what should I watch", "trending", "recommend horror", etc.). Media info: get_cast (who is in it), get_trailer (show trailer), where_to_watch (streaming), get_details (tell me about), get_content_rating (age rating), get_reviews (is it good), get_collection (movie series), next_episode (TV schedule), box_office (how much did it make).'
     ),
   selectionNumber: z
     .number()
@@ -209,6 +219,61 @@ Examples for media requests (not recommendations):
 - "Add Attack on Titan anime" → action: add, title: "Attack on Titan", isAnimeRequest: true
 - "Is anything downloading?" → action: status
 - "help" → action: help
+
+MEDIA INFO REQUESTS:
+When user asks for information ABOUT media (not adding it), use these actions:
+
+Cast & Crew (get_cast):
+- "Who's in this movie?" → action: get_cast (uses selected media)
+- "Who stars in Breaking Bad?" → action: get_cast, title: "Breaking Bad"
+- "Who directed Inception?" → action: get_cast, title: "Inception"
+- "Cast of The Office" → action: get_cast, title: "The Office"
+
+Trailer (get_trailer):
+- "Show me the trailer" → action: get_trailer (uses selected media)
+- "Trailer for Dune" → action: get_trailer, title: "Dune"
+- "Watch the trailer" → action: get_trailer
+
+Streaming/Where to Watch (where_to_watch):
+- "Where can I watch this?" → action: where_to_watch
+- "Is it on Netflix?" → action: where_to_watch
+- "What streaming services have Breaking Bad?" → action: where_to_watch, title: "Breaking Bad"
+- "Can I stream this?" → action: where_to_watch
+
+Details/Synopsis (get_details):
+- "Tell me about Inception" → action: get_details, title: "Inception"
+- "What's this movie about?" → action: get_details
+- "More info" → action: get_details
+- "Synopsis" → action: get_details
+
+Content Rating (get_content_rating):
+- "What's it rated?" → action: get_content_rating
+- "Is this appropriate for kids?" → action: get_content_rating
+- "Age rating for Deadpool" → action: get_content_rating, title: "Deadpool"
+- "Is this family friendly?" → action: get_content_rating
+
+Reviews/Ratings (get_reviews):
+- "Is it good?" → action: get_reviews
+- "What do people think of this?" → action: get_reviews
+- "Reviews for The Batman" → action: get_reviews, title: "The Batman"
+- "Should I watch this?" → action: get_reviews
+
+Collection/Franchise (get_collection) - for movies only:
+- "What other movies are in this series?" → action: get_collection
+- "Is there a sequel?" → action: get_collection
+- "Movies in this collection" → action: get_collection
+
+Next Episode (next_episode) - for TV shows only:
+- "When's the next episode?" → action: next_episode
+- "When does the next season start?" → action: next_episode
+- "Is this show still running?" → action: next_episode
+- "When does Stranger Things come back?" → action: next_episode, title: "Stranger Things"
+
+Box Office (box_office) - for movies only:
+- "How much did it make?" → action: box_office
+- "Box office for Avatar" → action: box_office, title: "Avatar"
+- "Was it successful?" → action: box_office
+- "Budget for this movie" → action: box_office
 
 Note: Admin commands (admin add/remove/list/etc.) are handled separately.`;
 }

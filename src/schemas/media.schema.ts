@@ -34,6 +34,16 @@ export const ActionType = z.enum([
   'admin_promote', // Admin: promote user to admin
   'admin_demote', // Admin: demote user from admin
   'admin_quota', // Admin: adjust user quota
+  // Media info actions
+  'get_cast', // Get cast and crew information
+  'get_trailer', // Get trailer link
+  'where_to_watch', // Get streaming availability
+  'get_details', // Get full media details
+  'get_content_rating', // Get age rating (PG-13, TV-MA, etc.)
+  'get_reviews', // Get ratings and reviews
+  'get_collection', // Get movie collection/franchise
+  'next_episode', // Get next episode info (TV only)
+  'box_office', // Get box office info (movies only)
   'unknown', // Could not determine
 ]);
 export type ActionType = z.infer<typeof ActionType>;

@@ -81,6 +81,7 @@ export function buildRuntimeConfig(appConfig: AppConfig): Config {
     tmdb: {
       apiKey: appConfig.tmdb.apiKey,
       language: appConfig.tmdb.language,
+      watchRegion: appConfig.tmdb.watchRegion,
     },
     users: Array.isArray(appConfig.users) ? (appConfig.users as User[]) : [],
     quotas: {
@@ -152,6 +153,7 @@ export function buildRuntimeConfig(appConfig: AppConfig): Config {
       labelAwaitingSeasonSelection: appConfig.messages.labelAwaitingSeasonSelection,
       helpText: appConfig.messages.helpText,
       adminHelpText: appConfig.messages.adminHelpText,
+      noMediaContext: appConfig.messages.noMediaContext,
     },
   };
 }

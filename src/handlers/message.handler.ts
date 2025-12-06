@@ -180,6 +180,26 @@ export class MessageHandler {
         case 'recommend':
           return await this.handleRecommendationRequest(userId, parsed);
 
+        // Media info actions
+        case 'get_cast':
+          return await this.handleGetCast(userId, parsed);
+        case 'get_trailer':
+          return await this.handleGetTrailer(userId, parsed);
+        case 'where_to_watch':
+          return await this.handleWhereToWatch(userId, parsed);
+        case 'get_details':
+          return await this.handleGetDetails(userId, parsed);
+        case 'get_content_rating':
+          return await this.handleGetContentRating(userId, parsed);
+        case 'get_reviews':
+          return await this.handleGetReviews(userId, parsed);
+        case 'get_collection':
+          return await this.handleGetCollection(userId, parsed);
+        case 'next_episode':
+          return await this.handleNextEpisode(userId, parsed);
+        case 'box_office':
+          return await this.handleBoxOffice(userId, parsed);
+
         default:
           return {
             text: this.config.messages.unknownCommand,
@@ -1612,6 +1632,426 @@ export class MessageHandler {
       .split(' ')
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
+  }
+
+  // ============================================
+  // MEDIA INFO HANDLERS
+  // ============================================
+
+  /**
+   * Resolve media context - get from session or search by title
+   * Returns null if no media can be determined
+   */
+  private async resolveMediaContext(
+    userId: PlatformUserId,
+    parsed: ParsedRequest
+  ): Promise<MediaSearchResult | null> {
+    // If title specified, search for it
+    if (parsed.title) {
+      try {
+        const results = await this.services.tmdb.searchMulti(parsed.title);
+        if (results.length > 0) {
+          return results[0]!;
+        }
+      } catch (error) {
+        this.logger.error({ error, title: parsed.title }, 'Failed to search for title');
+      }
+      return null;
+    }
+
+    // Otherwise use selected media from session
+    const selectedMedia = this.services.session.getSelectedMedia(userId);
+    if (selectedMedia) {
+      return selectedMedia;
+    }
+
+    // Check pending results (user might be asking about first result)
+    const pendingResults = this.services.session.getPendingResults(userId);
+    if (pendingResults.length > 0) {
+      return pendingResults[0]!;
+    }
+
+    return null;
+  }
+
+  /**
+   * Handle get_cast action - show cast and crew
+   */
+  private async handleGetCast(userId: PlatformUserId, parsed: ParsedRequest): Promise<MessageResponse> {
+    const media = await this.resolveMediaContext(userId, parsed);
+    if (!media) {
+      return { text: this.config.messages.noMediaContext };
+    }
+
+    try {
+      const mediaType = media.mediaType === 'movie' ? 'movie' : 'tv';
+      const credits = await this.services.tmdb.getCredits(media.id, mediaType);
+
+      const year = media.year ? ` (${media.year})` : '';
+      const lines = [`${EMOJI.cast} ${media.title}${year} Cast:\n`];
+
+      // Top 5 cast members
+      const topCast = credits.cast.slice(0, 5);
+      for (const actor of topCast) {
+        lines.push(`• ${actor.name} as ${actor.character}`);
+      }
+
+      // Key crew (director for movies, creator for TV)
+      const directors = credits.crew.filter((c) => c.job === 'Director').slice(0, 2);
+      const creators = credits.crew.filter((c) => c.job === 'Executive Producer' || c.department === 'Writing').slice(0, 2);
+
+      if (directors.length > 0) {
+        lines.push(`\nDirector: ${directors.map((d) => d.name).join(', ')}`);
+      } else if (creators.length > 0) {
+        lines.push(`\nCreated by: ${creators.map((c) => c.name).join(', ')}`);
+      }
+
+      return { text: lines.join('\n') };
+    } catch (error) {
+      this.logger.error({ error, mediaId: media.id }, 'Failed to get cast');
+      return { text: `${EMOJI.warning} ${this.config.messages.genericError}` };
+    }
+  }
+
+  /**
+   * Handle get_trailer action - show trailer link
+   */
+  private async handleGetTrailer(userId: PlatformUserId, parsed: ParsedRequest): Promise<MessageResponse> {
+    const media = await this.resolveMediaContext(userId, parsed);
+    if (!media) {
+      return { text: this.config.messages.noMediaContext };
+    }
+
+    try {
+      const mediaType = media.mediaType === 'movie' ? 'movie' : 'tv';
+      const trailerUrl = await this.services.tmdb.getTrailerUrl(media.id, mediaType);
+
+      const year = media.year ? ` (${media.year})` : '';
+
+      if (!trailerUrl) {
+        return { text: `${EMOJI.warning} No trailer found for ${media.title}${year}` };
+      }
+
+      return { text: `${EMOJI.trailer} ${media.title}${year} Trailer:\n${trailerUrl}` };
+    } catch (error) {
+      this.logger.error({ error, mediaId: media.id }, 'Failed to get trailer');
+      return { text: `${EMOJI.warning} ${this.config.messages.genericError}` };
+    }
+  }
+
+  /**
+   * Handle where_to_watch action - show streaming availability
+   */
+  private async handleWhereToWatch(userId: PlatformUserId, parsed: ParsedRequest): Promise<MessageResponse> {
+    const media = await this.resolveMediaContext(userId, parsed);
+    if (!media) {
+      return { text: this.config.messages.noMediaContext };
+    }
+
+    try {
+      const mediaType = media.mediaType === 'movie' ? 'movie' : 'tv';
+      const region = this.config.tmdb.watchRegion ?? 'US';
+      const providers = await this.services.tmdb.getWatchProviders(media.id, mediaType, region);
+
+      const year = media.year ? ` (${media.year})` : '';
+      const lines = [`${EMOJI.streaming} ${media.title}${year} (${region}):\n`];
+
+      if (providers.flatrate.length > 0) {
+        lines.push(`Stream: ${providers.flatrate.join(', ')}`);
+      }
+      if (providers.rent.length > 0) {
+        lines.push(`Rent: ${providers.rent.join(', ')}`);
+      }
+      if (providers.buy.length > 0) {
+        lines.push(`Buy: ${providers.buy.join(', ')}`);
+      }
+
+      if (providers.flatrate.length === 0 && providers.rent.length === 0 && providers.buy.length === 0) {
+        lines.push('No streaming options available in your region.');
+      }
+
+      return { text: lines.join('\n') };
+    } catch (error) {
+      this.logger.error({ error, mediaId: media.id }, 'Failed to get watch providers');
+      return { text: `${EMOJI.warning} ${this.config.messages.genericError}` };
+    }
+  }
+
+  /**
+   * Handle get_details action - show full media info
+   */
+  private async handleGetDetails(userId: PlatformUserId, parsed: ParsedRequest): Promise<MessageResponse> {
+    const media = await this.resolveMediaContext(userId, parsed);
+    if (!media) {
+      return { text: this.config.messages.noMediaContext };
+    }
+
+    try {
+      const emoji = getMediaEmoji(media.mediaType);
+      const year = media.year ? ` (${media.year})` : '';
+      const rating = media.rating ? ` ${EMOJI.star} ${media.rating.toFixed(1)}` : '';
+
+      const lines = [`${emoji} ${media.title}${year}${rating}\n`];
+
+      // Add overview/synopsis
+      if (media.overview) {
+        lines.push(media.overview);
+        lines.push('');
+      }
+
+      // Get additional details from TMDB
+      if (media.mediaType === 'movie') {
+        const details = await this.services.tmdb.getMovieDetailsExtended(media.id);
+        if (details.runtime) {
+          lines.push(`Runtime: ${details.runtime} min`);
+        }
+        if (details.genres?.length) {
+          lines.push(`Genres: ${details.genres.map((g) => g.name).join(', ')}`);
+        }
+      } else {
+        const details = await this.services.tmdb.getTvDetailsExtended(media.id);
+        if (details.number_of_seasons) {
+          lines.push(`Seasons: ${details.number_of_seasons}`);
+        }
+        if (details.number_of_episodes) {
+          lines.push(`Episodes: ${details.number_of_episodes}`);
+        }
+        if (details.status) {
+          lines.push(`Status: ${details.status}`);
+        }
+        if (details.genres?.length) {
+          lines.push(`Genres: ${details.genres.map((g) => g.name).join(', ')}`);
+        }
+      }
+
+      return { text: lines.join('\n') };
+    } catch (error) {
+      this.logger.error({ error, mediaId: media.id }, 'Failed to get details');
+      return { text: `${EMOJI.warning} ${this.config.messages.genericError}` };
+    }
+  }
+
+  /**
+   * Handle get_content_rating action - show age rating
+   */
+  private async handleGetContentRating(userId: PlatformUserId, parsed: ParsedRequest): Promise<MessageResponse> {
+    const media = await this.resolveMediaContext(userId, parsed);
+    if (!media) {
+      return { text: this.config.messages.noMediaContext };
+    }
+
+    try {
+      const region = this.config.tmdb.watchRegion ?? 'US';
+      let rating: string | null = null;
+
+      if (media.mediaType === 'movie') {
+        rating = await this.services.tmdb.getMovieCertification(media.id, region);
+      } else {
+        rating = await this.services.tmdb.getTvContentRating(media.id, region);
+      }
+
+      const year = media.year ? ` (${media.year})` : '';
+
+      if (!rating) {
+        return { text: `${EMOJI.warning} No rating information found for ${media.title}${year}` };
+      }
+
+      // Provide context about the rating
+      let ratingContext = '';
+      if (['G', 'TV-G', 'TV-Y'].includes(rating)) {
+        ratingContext = '\nSuitable for all ages.';
+      } else if (['PG', 'TV-PG', 'TV-Y7'].includes(rating)) {
+        ratingContext = '\nParental guidance suggested.';
+      } else if (['PG-13', 'TV-14'].includes(rating)) {
+        ratingContext = '\nMay be unsuitable for children under 13/14.';
+      } else if (['R', 'TV-MA', 'NC-17'].includes(rating)) {
+        ratingContext = '\nMature audiences only. Not suitable for children.';
+      }
+
+      return { text: `${EMOJI.rating} ${media.title}${year} is rated ${rating}${ratingContext}` };
+    } catch (error) {
+      this.logger.error({ error, mediaId: media.id }, 'Failed to get content rating');
+      return { text: `${EMOJI.warning} ${this.config.messages.genericError}` };
+    }
+  }
+
+  /**
+   * Handle get_reviews action - show ratings and reviews
+   */
+  private async handleGetReviews(userId: PlatformUserId, parsed: ParsedRequest): Promise<MessageResponse> {
+    const media = await this.resolveMediaContext(userId, parsed);
+    if (!media) {
+      return { text: this.config.messages.noMediaContext };
+    }
+
+    try {
+      const mediaType = media.mediaType === 'movie' ? 'movie' : 'tv';
+      const { reviews, total } = await this.services.tmdb.getReviews(media.id, mediaType);
+
+      const year = media.year ? ` (${media.year})` : '';
+      const rating = media.rating ? media.rating.toFixed(1) : 'N/A';
+      const lines = [`${EMOJI.star} ${media.title}${year}\nTMDB Rating: ${rating}/10\n`];
+
+      if (reviews.length > 0) {
+        lines.push(`Reviews (${total} total):\n`);
+        for (const review of reviews.slice(0, 2)) {
+          const reviewRating = review.rating ? ` (${review.rating}/10)` : '';
+          lines.push(`"${review.content}"${reviewRating}\n— ${review.author}\n`);
+        }
+      } else {
+        lines.push('No reviews available yet.');
+      }
+
+      return { text: lines.join('\n') };
+    } catch (error) {
+      this.logger.error({ error, mediaId: media.id }, 'Failed to get reviews');
+      return { text: `${EMOJI.warning} ${this.config.messages.genericError}` };
+    }
+  }
+
+  /**
+   * Handle get_collection action - show movie franchise
+   */
+  private async handleGetCollection(userId: PlatformUserId, parsed: ParsedRequest): Promise<MessageResponse> {
+    const media = await this.resolveMediaContext(userId, parsed);
+    if (!media) {
+      return { text: this.config.messages.noMediaContext };
+    }
+
+    // Collections are only for movies
+    if (media.mediaType !== 'movie') {
+      return { text: `${EMOJI.warning} Collections are only available for movies. For TV shows, try "next episode" instead.` };
+    }
+
+    try {
+      const details = await this.services.tmdb.getMovieDetailsExtended(media.id);
+
+      if (!details.belongs_to_collection) {
+        const year = media.year ? ` (${media.year})` : '';
+        return { text: `${EMOJI.movie} ${media.title}${year} is not part of a collection.` };
+      }
+
+      const collection = await this.services.tmdb.getCollection(details.belongs_to_collection.id);
+      if (!collection) {
+        return { text: `${EMOJI.warning} Could not load collection information.` };
+      }
+
+      const lines = [`${EMOJI.collection} ${collection.name}:\n`];
+
+      // Sort by release date
+      const sortedParts = collection.parts
+        .filter((p) => p.release_date)
+        .sort((a, b) => a.release_date.localeCompare(b.release_date));
+
+      for (const part of sortedParts) {
+        const partYear = part.release_date ? ` (${part.release_date.slice(0, 4)})` : '';
+        const partRating = part.vote_average ? ` ${EMOJI.star}${part.vote_average.toFixed(1)}` : '';
+        const isCurrent = part.id === media.id ? ' ← ' : '';
+        lines.push(`• ${part.title}${partYear}${partRating}${isCurrent}`);
+      }
+
+      return { text: lines.join('\n') };
+    } catch (error) {
+      this.logger.error({ error, mediaId: media.id }, 'Failed to get collection');
+      return { text: `${EMOJI.warning} ${this.config.messages.genericError}` };
+    }
+  }
+
+  /**
+   * Handle next_episode action - show TV schedule
+   */
+  private async handleNextEpisode(userId: PlatformUserId, parsed: ParsedRequest): Promise<MessageResponse> {
+    const media = await this.resolveMediaContext(userId, parsed);
+    if (!media) {
+      return { text: this.config.messages.noMediaContext };
+    }
+
+    // Only for TV shows
+    if (media.mediaType !== 'tv_show') {
+      return { text: `${EMOJI.warning} This action is only available for TV shows.` };
+    }
+
+    try {
+      const details = await this.services.tmdb.getTvDetailsExtended(media.id);
+      const year = media.year ? ` (${media.year})` : '';
+      const lines = [`${EMOJI.tvShow} ${media.title}${year}\n`];
+
+      lines.push(`Status: ${details.status || 'Unknown'}`);
+
+      if (details.next_episode_to_air) {
+        const ep = details.next_episode_to_air;
+        lines.push(`\nNext Episode: S${ep.season_number}E${ep.episode_number}`);
+        if (ep.name) lines.push(`"${ep.name}"`);
+        if (ep.air_date) lines.push(`Air Date: ${ep.air_date}`);
+      } else if (details.status === 'Ended' || details.status === 'Canceled') {
+        lines.push('\nThis show has ended.');
+        if (details.last_episode_to_air) {
+          const ep = details.last_episode_to_air;
+          lines.push(`Final Episode: S${ep.season_number}E${ep.episode_number} (${ep.air_date})`);
+        }
+      } else {
+        lines.push('\nNo upcoming episodes announced.');
+        if (details.last_episode_to_air) {
+          const ep = details.last_episode_to_air;
+          lines.push(`Last Episode: S${ep.season_number}E${ep.episode_number} (${ep.air_date})`);
+        }
+      }
+
+      if (details.number_of_seasons) {
+        lines.push(`\nTotal Seasons: ${details.number_of_seasons}`);
+      }
+
+      return { text: lines.join('\n') };
+    } catch (error) {
+      this.logger.error({ error, mediaId: media.id }, 'Failed to get next episode');
+      return { text: `${EMOJI.warning} ${this.config.messages.genericError}` };
+    }
+  }
+
+  /**
+   * Handle box_office action - show financial info
+   */
+  private async handleBoxOffice(userId: PlatformUserId, parsed: ParsedRequest): Promise<MessageResponse> {
+    const media = await this.resolveMediaContext(userId, parsed);
+    if (!media) {
+      return { text: this.config.messages.noMediaContext };
+    }
+
+    // Only for movies
+    if (media.mediaType !== 'movie') {
+      return { text: `${EMOJI.warning} Box office information is only available for movies.` };
+    }
+
+    try {
+      const details = await this.services.tmdb.getMovieDetailsExtended(media.id);
+      const year = media.year ? ` (${media.year})` : '';
+      const lines = [`${EMOJI.money} ${media.title}${year}\n`];
+
+      const formatMoney = (amount: number | undefined) => {
+        if (!amount) return 'N/A';
+        if (amount >= 1_000_000_000) return `$${(amount / 1_000_000_000).toFixed(2)}B`;
+        if (amount >= 1_000_000) return `$${(amount / 1_000_000).toFixed(1)}M`;
+        return `$${amount.toLocaleString()}`;
+      };
+
+      lines.push(`Budget: ${formatMoney(details.budget)}`);
+      lines.push(`Box Office: ${formatMoney(details.revenue)}`);
+
+      if (details.budget && details.revenue) {
+        const profit = details.revenue - details.budget;
+        const roi = ((details.revenue / details.budget) * 100 - 100).toFixed(0);
+        if (profit > 0) {
+          lines.push(`\nProfit: ${formatMoney(profit)} (${roi}% ROI)`);
+        } else {
+          lines.push(`\nLoss: ${formatMoney(Math.abs(profit))}`);
+        }
+      }
+
+      return { text: lines.join('\n') };
+    } catch (error) {
+      this.logger.error({ error, mediaId: media.id }, 'Failed to get box office');
+      return { text: `${EMOJI.warning} ${this.config.messages.genericError}` };
+    }
   }
 
   /**
