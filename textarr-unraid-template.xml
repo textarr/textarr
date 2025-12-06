@@ -7,14 +7,14 @@
   <Privileged>false</Privileged>
   <Support>https://github.com/Textarr/textarr/issues</Support>
   <Project>https://github.com/Textarr/textarr</Project>
-  <Overview>SMS-based media request app that integrates with Sonarr and Radarr. Send a text message to request TV shows or movies, powered by AI.</Overview>
+  <Overview>AI-powered media request bot for Sonarr and Radarr. Supports Telegram, Discord, Slack (no port forwarding needed), and SMS via Twilio (requires Tailscale Funnel or Cloudflare Tunnel for webhooks). Configure everything through the web UI.</Overview>
   <Category>MediaApp:Other Tools:</Category>
   <WebUI>http://[IP]:[PORT:3030]/</WebUI>
   <TemplateURL>https://raw.githubusercontent.com/Textarr/textarr/main/unraid-template.xml</TemplateURL>
   <Icon>https://raw.githubusercontent.com/Textarr/textarr/main/public/icon.png</Icon>
   <ExtraParams>--restart=unless-stopped</ExtraParams>
   <DateInstalled></DateInstalled>
-  <Description>SMS-based media request app that integrates with Sonarr and Radarr. Send a text message to request TV shows or movies, powered by AI. Requires Twilio account for SMS and OpenAI/Anthropic for AI processing.</Description>
+  <Description>AI-powered media request bot for Sonarr and Radarr. Request movies and TV shows via natural language on Telegram, Discord, Slack, or SMS. Telegram/Discord/Slack work without exposing ports. SMS (Twilio) requires a public URL - use Tailscale Funnel or Cloudflare Tunnel. All configuration is done through the web UI after installation.</Description>
 
   <!-- Port Configuration -->
   <Config Name="Web UI Port" Target="3030" Default="3030" Mode="tcp" Description="Port for the web interface and webhook endpoint" Type="Port" Display="always" Required="true" Mask="false">3030</Config>
@@ -26,36 +26,7 @@
   <Config Name="PUID" Target="PUID" Default="99" Mode="" Description="User ID to run as (99 for nobody on Unraid)" Type="Variable" Display="advanced" Required="false" Mask="false">99</Config>
   <Config Name="PGID" Target="PGID" Default="100" Mode="" Description="Group ID to run as (100 for users on Unraid)" Type="Variable" Display="advanced" Required="false" Mask="false">100</Config>
 
-  <!-- Twilio Configuration -->
-  <Config Name="Twilio Account SID" Target="TWILIO_ACCOUNT_SID" Default="" Mode="" Description="Your Twilio Account SID (starts with AC)" Type="Variable" Display="always" Required="true" Mask="false"></Config>
-  <Config Name="Twilio Auth Token" Target="TWILIO_AUTH_TOKEN" Default="" Mode="" Description="Your Twilio Auth Token" Type="Variable" Display="always" Required="true" Mask="true"></Config>
-  <Config Name="Twilio Phone Number" Target="TWILIO_PHONE_NUMBER" Default="" Mode="" Description="Your Twilio phone number in E.164 format (e.g., +15551234567)" Type="Variable" Display="always" Required="true" Mask="false"></Config>
-
-  <!-- AI Configuration -->
-  <Config Name="AI Provider" Target="AI_PROVIDER" Default="openai" Mode="" Description="AI provider to use: openai, anthropic, or google" Type="Variable" Display="always" Required="true" Mask="false">openai</Config>
-  <Config Name="AI Model" Target="AI_MODEL" Default="gpt-4-turbo" Mode="" Description="AI model name (e.g., gpt-4-turbo, claude-3-opus-20240229, gemini-pro)" Type="Variable" Display="always" Required="true" Mask="false">gpt-4-turbo</Config>
-  <Config Name="OpenAI API Key" Target="OPENAI_API_KEY" Default="" Mode="" Description="OpenAI API key (required if using OpenAI)" Type="Variable" Display="always" Required="false" Mask="true"></Config>
-  <Config Name="Anthropic API Key" Target="ANTHROPIC_API_KEY" Default="" Mode="" Description="Anthropic API key (required if using Anthropic)" Type="Variable" Display="advanced" Required="false" Mask="true"></Config>
-  <Config Name="Google API Key" Target="GOOGLE_API_KEY" Default="" Mode="" Description="Google AI API key (required if using Google)" Type="Variable" Display="advanced" Required="false" Mask="true"></Config>
-
-  <!-- Sonarr Configuration -->
-  <Config Name="Sonarr URL" Target="SONARR_URL" Default="http://sonarr:8989" Mode="" Description="Sonarr URL (use container name if on same Docker network)" Type="Variable" Display="always" Required="true" Mask="false">http://sonarr:8989</Config>
-  <Config Name="Sonarr API Key" Target="SONARR_API_KEY" Default="" Mode="" Description="Sonarr API key (found in Settings > General)" Type="Variable" Display="always" Required="true" Mask="true"></Config>
-  <Config Name="Sonarr Quality Profile ID" Target="SONARR_QUALITY_PROFILE_ID" Default="1" Mode="" Description="Quality profile ID for new TV shows" Type="Variable" Display="advanced" Required="false" Mask="false">1</Config>
-  <Config Name="Sonarr Root Folder" Target="SONARR_ROOT_FOLDER" Default="/tv" Mode="" Description="Root folder path for TV shows in Sonarr" Type="Variable" Display="advanced" Required="false" Mask="false">/tv</Config>
-
-  <!-- Radarr Configuration -->
-  <Config Name="Radarr URL" Target="RADARR_URL" Default="http://radarr:7878" Mode="" Description="Radarr URL (use container name if on same Docker network)" Type="Variable" Display="always" Required="true" Mask="false">http://radarr:7878</Config>
-  <Config Name="Radarr API Key" Target="RADARR_API_KEY" Default="" Mode="" Description="Radarr API key (found in Settings > General)" Type="Variable" Display="always" Required="true" Mask="true"></Config>
-  <Config Name="Radarr Quality Profile ID" Target="RADARR_QUALITY_PROFILE_ID" Default="1" Mode="" Description="Quality profile ID for new movies" Type="Variable" Display="advanced" Required="false" Mask="false">1</Config>
-  <Config Name="Radarr Root Folder" Target="RADARR_ROOT_FOLDER" Default="/movies" Mode="" Description="Root folder path for movies in Radarr" Type="Variable" Display="advanced" Required="false" Mask="false">/movies</Config>
-
-  <!-- Security Configuration -->
-  <Config Name="Allowed Phone Numbers" Target="ALLOWED_PHONE_NUMBERS" Default="" Mode="" Description="Comma-separated list of phone numbers allowed to use the bot (E.164 format)" Type="Variable" Display="always" Required="true" Mask="false"></Config>
-
   <!-- Advanced Configuration -->
   <Config Name="Log Level" Target="LOG_LEVEL" Default="info" Mode="" Description="Logging level: debug, info, warn, error" Type="Variable" Display="advanced" Required="false" Mask="false">info</Config>
-  <Config Name="Session Timeout (ms)" Target="SESSION_TIMEOUT_MS" Default="300000" Mode="" Description="Session timeout in milliseconds (default: 5 minutes)" Type="Variable" Display="advanced" Required="false" Mask="false">300000</Config>
-  <Config Name="Max Search Results" Target="MAX_SEARCH_RESULTS" Default="5" Mode="" Description="Maximum number of search results to show" Type="Variable" Display="advanced" Required="false" Mask="false">5</Config>
   <Config Name="Node Environment" Target="NODE_ENV" Default="production" Mode="" Description="Node environment (production recommended)" Type="Variable" Display="advanced" Required="false" Mask="false">production</Config>
 </Container>

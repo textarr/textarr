@@ -384,6 +384,71 @@ When configuring the bot to connect to Sonarr/Radarr running on the same Unraid 
 - **From host network**: Use Unraid's IP address (e.g., `http://192.168.1.100:8989`)
 - **From bridge network**: Use `http://host.docker.internal:8989` or the Unraid IP
 
+#### Exposing Webhooks for SMS (Twilio)
+
+If you're using SMS via Twilio, you need a public URL for Twilio to send webhook callbacks. **Telegram, Discord, and Slack don't require this** - they use polling or direct connections.
+
+**Option 1: Tailscale Funnel (Recommended)**
+
+Tailscale Funnel securely exposes your local service to the internet without opening ports on your router. The Unraid Tailscale plugin makes this easy with built-in container options.
+
+**Prerequisites:**
+1. Install the **Tailscale** plugin from Unraid Community Apps
+2. Enable Funnel in the [Tailscale admin console](https://login.tailscale.com/admin/acls) by adding to your ACL:
+   ```json
+   "nodeAttrs": [
+     {
+       "target": ["autogroup:member"],
+       "attr": ["funnel"]
+     }
+   ]
+   ```
+
+**Container Setup:**
+
+When adding/editing the Textarr container in Unraid, configure these Tailscale options:
+
+| Setting | Value |
+|---------|-------|
+| **Use Tailscale** | On |
+| **Tailscale Hostname** | `textarr` (or your preferred name) |
+| **Tailscale Serve** | Funnel |
+| **Tailscale Serve Port** | `3030` |
+
+Leave other Tailscale settings at their defaults unless you have specific needs.
+
+After deploying, check the container log and follow the link to register the container to your Tailnet. Your public URL will be:
+```
+https://textarr.your-tailnet.ts.net
+```
+
+In Twilio, set your webhook URL to:
+```
+https://textarr.your-tailnet.ts.net/webhooks/sms
+```
+
+> **Note:** Funnel only works on ports 443, 8443, or 10000. The plugin automatically handles the port mapping from HTTPS 443 to your container's port 3030.
+
+**Option 2: Cloudflare Tunnel**
+
+Cloudflare Tunnel (formerly Argo Tunnel) provides a similar solution using Cloudflare's network.
+
+1. Create a tunnel in the [Cloudflare Zero Trust dashboard](https://one.dash.cloudflare.com/)
+2. Install the **cloudflared** container from Community Apps, or add it to your Docker setup:
+   ```yaml
+   cloudflared:
+     image: cloudflare/cloudflared:latest
+     container_name: cloudflared-tunnel
+     restart: unless-stopped
+     command: tunnel run
+     environment:
+       - TUNNEL_TOKEN=your-tunnel-token
+   ```
+3. Configure the tunnel to route traffic to `http://your-unraid-ip:3030`
+4. Use the tunnel's public URL in your Twilio webhook settings
+
+> **Tip:** The `docker-compose.yml` in this repo includes a commented cloudflared example.
+
 ### Manual
 
 ```bash
