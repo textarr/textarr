@@ -366,7 +366,8 @@ docker run -d \
 |----------|---------|-------------|
 | `PUID` | `1000` | User ID to run as (matches your host user for volume permissions) |
 | `PGID` | `1000` | Group ID to run as |
-| `NODE_ENV` | `development` | Set to `production` for secure cookies |
+| `NODE_ENV` | `development` | Set to `production` for production deployments |
+| `COOKIE_SECURE` | `false` | Set to `true` for HTTPS deployments (requires valid TLS) |
 | `LOG_LEVEL` | `info` | Logging level: debug, info, warn, error |
 
 To find your user's PUID/PGID, run `id` in your terminal.
@@ -624,7 +625,7 @@ The web dashboard requires authentication to access all configuration and manage
 | CSRF protection | Double-submit cookie pattern |
 | Rate limiting | 5 login attempts per 5 minutes, 100 requests/min global |
 | Security headers | Helmet (CSP, X-Frame-Options, X-Content-Type-Options, etc.) |
-| Cookie flags | `HttpOnly`, `Secure` (production), `SameSite=Strict` |
+| Cookie flags | `HttpOnly`, `Secure` (when `COOKIE_SECURE=true`), `SameSite=Strict` |
 
 ### First-Time Setup
 
@@ -679,7 +680,8 @@ For production deployments:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `NODE_ENV` | Set to `production` for secure cookies | `development` |
+| `NODE_ENV` | Set to `production` for production deployments | `development` |
+| `COOKIE_SECURE` | Set to `true` for HTTPS deployments (enables secure cookies) | `false` |
 | `SESSION_KEY_FILE` | Path to session encryption key file | `./config/.session-key` |
 | `CONFIG_FILE` | Path to configuration file | `./config/config.json` |
 

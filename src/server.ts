@@ -58,12 +58,14 @@ export async function createServer(container: ServiceContainer, logger: Logger) 
   await fastify.register(fastifyCookie);
 
   // Secure session with encrypted cookies
+  // For self-hosted apps, default to allowing HTTP. Set COOKIE_SECURE=true for HTTPS deployments.
+  const secureCookie = process.env.COOKIE_SECURE === 'true';
   await fastify.register(fastifySecureSession, {
     key: getOrGenerateSessionKey(),
     cookie: {
       path: '/',
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: secureCookie,
       sameSite: 'strict',
     },
   });
@@ -74,7 +76,7 @@ export async function createServer(container: ServiceContainer, logger: Logger) 
     cookieOpts: {
       httpOnly: true,
       sameSite: 'strict',
-      secure: process.env.NODE_ENV === 'production',
+      secure: secureCookie,
       path: '/',
     },
   });
