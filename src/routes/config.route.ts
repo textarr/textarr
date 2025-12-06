@@ -9,6 +9,8 @@ import {
   saveConfig,
   getConfigForDisplay,
   isConfigComplete,
+  preserveSecrets,
+  preserveManagedFields,
   AppConfigSchema,
   type AppConfig,
 } from '../config/storage.js';
@@ -113,38 +115,13 @@ export async function configRoutes(fastify: FastifyInstance, container: ServiceC
   fastify.post<{ Body: AppConfig }>('/api/config', async (request, reply) => {
     try {
       const newConfig = AppConfigSchema.parse(request.body);
-
-      // Merge with existing config to preserve masked fields
       const existingConfig = loadConfig();
 
-      // If API keys are masked, keep the existing ones
-      if (newConfig.ai.openaiApiKey?.startsWith('••••')) {
-        newConfig.ai.openaiApiKey = existingConfig.ai.openaiApiKey;
-      }
-      if (newConfig.ai.anthropicApiKey?.startsWith('••••')) {
-        newConfig.ai.anthropicApiKey = existingConfig.ai.anthropicApiKey;
-      }
-      if (newConfig.ai.googleApiKey?.startsWith('••••')) {
-        newConfig.ai.googleApiKey = existingConfig.ai.googleApiKey;
-      }
-      if (newConfig.twilio.authToken?.startsWith('••••')) {
-        newConfig.twilio.authToken = existingConfig.twilio.authToken;
-      }
-      if (newConfig.sonarr.apiKey?.startsWith('••••')) {
-        newConfig.sonarr.apiKey = existingConfig.sonarr.apiKey;
-      }
-      if (newConfig.radarr.apiKey?.startsWith('••••')) {
-        newConfig.radarr.apiKey = existingConfig.radarr.apiKey;
-      }
-      if (newConfig.tmdb.apiKey?.startsWith('••••')) {
-        newConfig.tmdb.apiKey = existingConfig.tmdb.apiKey;
-      }
-
-      // Preserve users - they are managed separately via /api/users endpoints
-      // The main config form doesn't include users, so keep existing ones
-      if (!newConfig.users || newConfig.users.length === 0) {
-        newConfig.users = existingConfig.users;
-      }
+      // Preserve secrets and managed fields using centralized helpers.
+      // This uses SECRET_FIELDS and MANAGED_SEPARATELY_FIELDS as single source of truth.
+      // To add a new secret field, just add it to SECRET_FIELDS in storage.ts.
+      preserveSecrets(newConfig, existingConfig);
+      preserveManagedFields(newConfig, existingConfig);
 
       // Save config to disk
       saveConfig(newConfig);

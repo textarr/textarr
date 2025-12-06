@@ -3,6 +3,40 @@ import { join } from 'path';
 import { z } from 'zod';
 
 /**
+ * Single source of truth for secret fields that need masking and preservation.
+ * When adding a new secret field:
+ * 1. Add it to this list
+ * 2. That's it! Masking and preservation happen automatically.
+ */
+export const SECRET_FIELDS = [
+  'ai.openaiApiKey',
+  'ai.anthropicApiKey',
+  'ai.googleApiKey',
+  'twilio.authToken',
+  'telegram.botToken',
+  'telegram.webhookSecret',
+  'discord.botToken',
+  'slack.botToken',
+  'slack.signingSecret',
+  'slack.appToken',
+  'sonarr.apiKey',
+  'radarr.apiKey',
+  'tmdb.apiKey',
+  'admin.passwordHash',
+  'downloadNotifications.webhookSecret',
+] as const;
+
+/**
+ * Fields managed by separate endpoints (not the config form).
+ * These are preserved entirely when saving config.
+ */
+export const MANAGED_SEPARATELY_FIELDS = [
+  'users',        // managed via /api/users
+  'admin',        // managed via /api/auth
+  'mediaRequests', // managed internally by the app
+] as const;
+
+/**
  * Configuration schema matching the app's needs
  */
 export const AppConfigSchema = z.object({
@@ -293,6 +327,95 @@ export type AppConfig = z.infer<typeof AppConfigSchema>;
 const CONFIG_FILE = process.env.CONFIG_FILE || join(process.cwd(), 'config', 'config.json');
 
 /**
+ * Get a value from an object using dot notation path (e.g., 'ai.openaiApiKey')
+ */
+function getPath(obj: Record<string, unknown>, path: string): unknown {
+  const parts = path.split('.');
+  let current: unknown = obj;
+  for (const part of parts) {
+    if (current === null || current === undefined || typeof current !== 'object') {
+      return undefined;
+    }
+    current = (current as Record<string, unknown>)[part];
+  }
+  return current;
+}
+
+/**
+ * Set a value in an object using dot notation path (e.g., 'ai.openaiApiKey')
+ */
+function setPath(obj: Record<string, unknown>, path: string, value: unknown): void {
+  const parts = path.split('.');
+  let current: Record<string, unknown> = obj;
+  for (let i = 0; i < parts.length - 1; i++) {
+    const part = parts[i]!;
+    if (!(part in current) || typeof current[part] !== 'object') {
+      current[part] = {};
+    }
+    current = current[part] as Record<string, unknown>;
+  }
+  current[parts[parts.length - 1]!] = value;
+}
+
+/**
+ * Mask a secret value for display.
+ * Shows last 4 characters for longer secrets, fully masks short ones.
+ */
+function maskSecret(value: string | undefined): string {
+  if (!value || value === '') return '';
+  if (value.length > 8) {
+    return '••••••••' + value.slice(-4);
+  }
+  return '••••••••';
+}
+
+/**
+ * Check if a value appears to be masked (starts with •)
+ */
+function isMasked(value: unknown): boolean {
+  return typeof value === 'string' && value.startsWith('••••');
+}
+
+/**
+ * Preserve secrets from existing config into new config.
+ * For each secret field, if the new value is empty or masked, use the existing value.
+ */
+export function preserveSecrets(newConfig: AppConfig, existingConfig: AppConfig): void {
+  for (const path of SECRET_FIELDS) {
+    const newValue = getPath(newConfig as unknown as Record<string, unknown>, path);
+    const existingValue = getPath(existingConfig as unknown as Record<string, unknown>, path);
+
+    if (!newValue || newValue === '' || isMasked(newValue)) {
+      setPath(newConfig as unknown as Record<string, unknown>, path, existingValue);
+    }
+  }
+}
+
+/**
+ * Preserve fields that are managed by separate endpoints.
+ */
+export function preserveManagedFields(newConfig: AppConfig, existingConfig: AppConfig): void {
+  for (const field of MANAGED_SEPARATELY_FIELDS) {
+    const newValue = getPath(newConfig as unknown as Record<string, unknown>, field);
+    const existingValue = getPath(existingConfig as unknown as Record<string, unknown>, field);
+
+    // For arrays, preserve if empty. For objects like admin, preserve if passwordHash is empty/masked.
+    if (field === 'admin') {
+      const adminNew = newValue as { passwordHash?: string } | undefined;
+      if (!adminNew?.passwordHash || adminNew.passwordHash === '' || isMasked(adminNew.passwordHash)) {
+        setPath(newConfig as unknown as Record<string, unknown>, field, existingValue);
+      }
+    } else if (Array.isArray(newValue)) {
+      if (newValue.length === 0) {
+        setPath(newConfig as unknown as Record<string, unknown>, field, existingValue);
+      }
+    } else if (!newValue) {
+      setPath(newConfig as unknown as Record<string, unknown>, field, existingValue);
+    }
+  }
+}
+
+/**
  * Load configuration from file
  */
 export function loadConfig(): AppConfig {
@@ -319,57 +442,22 @@ export function saveConfig(config: AppConfig): void {
 }
 
 /**
- * Get configuration for display (with sensitive fields masked)
+ * Get configuration for display (with sensitive fields masked).
+ * Uses SECRET_FIELDS as the single source of truth.
  */
 export function getConfigForDisplay(config: AppConfig): AppConfig {
-  return {
-    ...config,
-    ai: {
-      ...config.ai,
-      openaiApiKey: config.ai.openaiApiKey ? '••••••••' + config.ai.openaiApiKey.slice(-4) : '',
-      anthropicApiKey: config.ai.anthropicApiKey ? '••••••••' + config.ai.anthropicApiKey.slice(-4) : '',
-      googleApiKey: config.ai.googleApiKey ? '••••••••' + config.ai.googleApiKey.slice(-4) : '',
-    },
-    twilio: {
-      ...config.twilio,
-      authToken: config.twilio.authToken ? '••••••••' + config.twilio.authToken.slice(-4) : '',
-    },
-    telegram: {
-      ...config.telegram,
-      botToken: config.telegram.botToken ? '••••••••' + config.telegram.botToken.slice(-4) : '',
-      webhookSecret: config.telegram.webhookSecret ? '••••••••' : undefined,
-    },
-    discord: {
-      ...config.discord,
-      botToken: config.discord.botToken ? '••••••••' + config.discord.botToken.slice(-4) : '',
-    },
-    slack: {
-      ...config.slack,
-      botToken: config.slack.botToken ? '••••••••' + config.slack.botToken.slice(-4) : '',
-      signingSecret: config.slack.signingSecret ? '••••••••' + config.slack.signingSecret.slice(-4) : '',
-      appToken: config.slack.appToken ? '••••••••' + config.slack.appToken.slice(-4) : '',
-    },
-    sonarr: {
-      ...config.sonarr,
-      apiKey: config.sonarr.apiKey ? '••••••••' + config.sonarr.apiKey.slice(-4) : '',
-    },
-    radarr: {
-      ...config.radarr,
-      apiKey: config.radarr.apiKey ? '••••••••' + config.radarr.apiKey.slice(-4) : '',
-    },
-    tmdb: {
-      ...config.tmdb,
-      apiKey: config.tmdb.apiKey ? '••••••••' + config.tmdb.apiKey.slice(-4) : '',
-    },
-    admin: {
-      ...config.admin,
-      passwordHash: config.admin.passwordHash ? '••••••••' : '',
-    },
-    downloadNotifications: {
-      ...config.downloadNotifications,
-      webhookSecret: config.downloadNotifications.webhookSecret ? '••••••••' : '',
-    },
-  };
+  // Deep clone to avoid mutating original
+  const display = JSON.parse(JSON.stringify(config)) as AppConfig;
+
+  // Mask all secret fields
+  for (const path of SECRET_FIELDS) {
+    const value = getPath(display as unknown as Record<string, unknown>, path);
+    if (typeof value === 'string') {
+      setPath(display as unknown as Record<string, unknown>, path, maskSecret(value));
+    }
+  }
+
+  return display;
 }
 
 /**
