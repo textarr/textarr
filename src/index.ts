@@ -112,6 +112,7 @@ export function buildRuntimeConfig(appConfig: AppConfig): Config {
       cancelled: appConfig.messages.cancelled,
       restart: appConfig.messages.restart,
       backToStart: appConfig.messages.backToStart,
+      goodbyeMessage: appConfig.messages.goodbyeMessage,
       addPrompt: appConfig.messages.addPrompt,
       unknownCommand: appConfig.messages.unknownCommand,
       nothingToConfirm: appConfig.messages.nothingToConfirm,

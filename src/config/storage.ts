@@ -172,6 +172,7 @@ export const AppConfigSchema = z.object({
     cancelled: z.string().default('Cancelled. Send a new request anytime!'),
     restart: z.string().default('Starting fresh! What would you like to add?'),
     backToStart: z.string().default('Back to the start! What would you like to add?'),
+    goodbyeMessage: z.string().default('Sounds good! Let me know if you need anything.'),
 
     // Prompts
     addPrompt: z.string().default("What would you like to add? Try: 'Add Breaking Bad' or 'Add Dune'"),

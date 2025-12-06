@@ -60,9 +60,11 @@ const AIResponseSchema = z.object({
       'show_context',
       'restart',
       'change_selection',
+      'decline',
+      'continue',
     ])
     .describe(
-      'The action based on message and context. Conversational actions: confirm (yes), cancel (no), select (number), back, restart, show_context, change_selection. Media actions: add, search, status, help. Anime: anime_confirm, regular_confirm. Season: season_select.'
+      'The action based on message and context. Conversational actions: confirm (yes), cancel (no), select (number), back, restart, show_context, change_selection, decline (ending conversation), continue (wants to add more). Media actions: add, search, status, help. Anime: anime_confirm, regular_confirm. Season: season_select.'
     ),
   selectionNumber: z
     .number()
@@ -206,6 +208,8 @@ Interpret their response:
 - Help request (help, commands, what can you do) → action: help
 - "where am I", "what's happening", "context" → action: show_context
 - "start over", "reset", "clear" → action: restart
+- Declining/ending (no, no thanks, nope, I'm good, that's all, thanks, thank you, goodbye) → action: decline
+- Wanting to continue without specifying title (yes, yeah, sure, yep, ok) → action: continue
 `;
   }
 

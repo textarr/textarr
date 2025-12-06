@@ -24,6 +24,8 @@ export const ActionType = z.enum([
   'show_context', // Show current session state
   'restart', // Start fresh, clear session
   'change_selection', // Pick a different option (while in confirmation)
+  'decline', // Decline to continue (no, no thanks, I'm good)
+  'continue', // Wants to continue but didn't specify what (yes, yeah)
   'admin_help', // Admin: show admin commands
   'admin_add', // Admin: add a user
   'admin_remove', // Admin: remove a user

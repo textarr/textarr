@@ -111,6 +111,7 @@ export interface Config {
     cancelled: string;
     restart: string;
     backToStart: string;
+    goodbyeMessage: string;
     // Prompts
     addPrompt: string;
     unknownCommand: string;

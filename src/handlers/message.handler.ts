@@ -133,6 +133,12 @@ export class MessageHandler {
           this.services.session.resetSession(userId);
           return { text: this.config.messages.restart };
 
+        case 'decline':
+          return { text: this.config.messages.goodbyeMessage };
+
+        case 'continue':
+          return { text: this.config.messages.addPrompt };
+
         case 'change_selection':
           // User wants to pick different option while in confirmation
           if (parsed.selectionNumber && session.pendingResults.length > 0) {
