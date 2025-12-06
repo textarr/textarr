@@ -62,9 +62,10 @@ const AIResponseSchema = z.object({
       'change_selection',
       'decline',
       'continue',
+      'recommend',
     ])
     .describe(
-      'The action based on message and context. Conversational actions: confirm (yes), cancel (no), select (number), back, restart, show_context, change_selection, decline (ending conversation), continue (wants to add more). Media actions: add, search, status, help. Anime: anime_confirm, regular_confirm. Season: season_select.'
+      'The action based on message and context. Conversational actions: confirm (yes), cancel (no), select (number), back, restart, show_context, change_selection, decline (ending conversation), continue (wants to add more). Media actions: add, search, status, help, recommend. Anime: anime_confirm, regular_confirm. Season: season_select. Recommendation: recommend (for "what should I watch", "trending", "recommend horror", etc.).'
     ),
   selectionNumber: z
     .number()
@@ -78,6 +79,60 @@ const AIResponseSchema = z.object({
     .min(0)
     .max(1)
     .describe('Confidence score: 0.9-1.0 for clear requests, 0.5-0.7 for ambiguous'),
+  // Recommendation fields
+  recommendationType: z
+    .enum([
+      'trending',
+      'popular',
+      'top_rated',
+      'new_releases',
+      'upcoming',
+      'airing_today',
+      'genre',
+      'similar',
+      'keyword',
+      'by_year',
+      'by_provider',
+      'by_network',
+    ])
+    .nullable()
+    .describe('Type of recommendation when action is recommend. trending=hot now, popular=widely watched, top_rated=highest rated, new_releases=recent, upcoming=coming soon, airing_today=TV on today, genre=by genre, similar=like another title, keyword=by theme, by_year=from specific year/decade, by_provider=on streaming service, by_network=by TV network'),
+  recommendationGenre: z
+    .string()
+    .nullable()
+    .describe('Genre for recommendation (action, comedy, horror, sci-fi, drama, thriller, romance, documentary, animation, fantasy, mystery, crime, western, war, family, history, music). Normalize variants like "sci fi" to "science_fiction".'),
+  similarToTitle: z
+    .string()
+    .nullable()
+    .describe('Title to find similar content for, when recommendationType is similar'),
+  preferredMediaType: z
+    .enum(['movie', 'tv_show', 'any'])
+    .nullable()
+    .describe('User preference for movies vs TV shows in recommendations'),
+  recommendationKeyword: z
+    .string()
+    .nullable()
+    .describe('Thematic keyword for keyword-based recommendations (e.g., "time travel", "zombies", "heist", "superhero")'),
+  recommendationYear: z
+    .number()
+    .nullable()
+    .describe('Specific year for by_year recommendations'),
+  recommendationDecade: z
+    .string()
+    .nullable()
+    .describe('Decade for by_year recommendations (e.g., "80s", "90s", "2000s", "2010s")'),
+  recommendationMinRating: z
+    .number()
+    .nullable()
+    .describe('Minimum rating filter (e.g., 7.5 for "highly rated")'),
+  recommendationProvider: z
+    .string()
+    .nullable()
+    .describe('Streaming provider name (e.g., "Netflix", "HBO Max", "Amazon Prime", "Disney+", "Hulu")'),
+  recommendationNetwork: z
+    .string()
+    .nullable()
+    .describe('TV network name (e.g., "HBO", "AMC", "NBC", "ABC", "Netflix", "FX")'),
 });
 
 /**
@@ -108,7 +163,46 @@ Confidence:
 - 0.5-0.7: Significant ambiguity
 - Below 0.5: Very uncertain
 
-Examples in idle state:
+RECOMMENDATION REQUESTS:
+When user asks for suggestions, recommendations, or what to watch, use action: recommend
+
+Core types:
+- "What's trending?" → action: recommend, recommendationType: trending
+- "What's popular?" → action: recommend, recommendationType: popular
+- "Best rated shows" → action: recommend, recommendationType: top_rated, preferredMediaType: tv_show
+- "What's new?" / "Any new movies?" → action: recommend, recommendationType: new_releases
+- "What's coming out?" / "Upcoming movies" → action: recommend, recommendationType: upcoming
+- "What's on TV today?" → action: recommend, recommendationType: airing_today
+
+Genre-based:
+- "Recommend a horror movie" → action: recommend, recommendationType: genre, recommendationGenre: horror, preferredMediaType: movie
+- "Comedy shows" → action: recommend, recommendationType: genre, recommendationGenre: comedy, preferredMediaType: tv_show
+- "I want a sci-fi movie" → action: recommend, recommendationType: genre, recommendationGenre: science_fiction, preferredMediaType: movie
+
+Similar to:
+- "Something like Breaking Bad" → action: recommend, recommendationType: similar, similarToTitle: "Breaking Bad"
+- "Movies like Inception" → action: recommend, recommendationType: similar, similarToTitle: "Inception", preferredMediaType: movie
+
+Keyword/theme:
+- "Movies about time travel" → action: recommend, recommendationType: keyword, recommendationKeyword: "time travel", preferredMediaType: movie
+- "Zombie shows" → action: recommend, recommendationType: keyword, recommendationKeyword: "zombie", preferredMediaType: tv_show
+
+Year/era:
+- "80s horror movies" → action: recommend, recommendationType: genre, recommendationGenre: horror, recommendationDecade: "80s", preferredMediaType: movie
+- "Movies from 2024" → action: recommend, recommendationType: by_year, recommendationYear: 2024, preferredMediaType: movie
+
+Provider/network:
+- "What's good on Netflix?" → action: recommend, recommendationType: by_provider, recommendationProvider: "Netflix"
+- "HBO shows" → action: recommend, recommendationType: by_network, recommendationNetwork: "HBO", preferredMediaType: tv_show
+
+Combined filters:
+- "Highly rated comedies" → action: recommend, recommendationType: genre, recommendationGenre: comedy, recommendationMinRating: 7.5
+- "New horror movies from 2024" → action: recommend, recommendationType: genre, recommendationGenre: horror, recommendationYear: 2024, preferredMediaType: movie
+
+Genre normalization (use these values):
+action, adventure, animation, comedy, crime, documentary, drama, family, fantasy, history, horror, music, mystery, romance, science_fiction, thriller, war, western
+
+Examples for media requests (not recommendations):
 - "Add Breaking Bad" → action: add, title: "Breaking Bad", confidence: 0.95
 - "Download Dune 2021" → action: add, title: "Dune", year: 2021, confidence: 0.95
 - "Add Attack on Titan anime" → action: add, title: "Attack on Titan", isAnimeRequest: true
@@ -346,7 +440,9 @@ export class AIService {
       );
 
       const result: ParsedRequest = {
-        mediaType: 'unknown', // TMDB will determine the actual type
+        mediaType: object.preferredMediaType === 'movie' ? 'movie'
+          : object.preferredMediaType === 'tv_show' ? 'tv_show'
+          : 'unknown',
         title: object.title,
         year: object.year,
         action: object.action,
@@ -354,6 +450,20 @@ export class AIService {
         confidence: object.confidence,
         rawMessage: message,
         isAnimeRequest: object.isAnimeRequest,
+        // Add recommendation parameters when action is recommend
+        recommendationParams: object.action === 'recommend' ? {
+          type: object.recommendationType ?? 'popular',
+          mediaType: object.preferredMediaType ?? 'any',
+          genre: object.recommendationGenre ?? null,
+          similarTo: object.similarToTitle ?? null,
+          timeWindow: null,
+          keyword: object.recommendationKeyword ?? null,
+          year: object.recommendationYear ?? null,
+          decade: object.recommendationDecade ?? null,
+          minRating: object.recommendationMinRating ?? null,
+          provider: object.recommendationProvider ?? null,
+          network: object.recommendationNetwork ?? null,
+        } : undefined,
       };
 
       this.logger.info({ message, result, state: context?.state }, 'Message parsed');

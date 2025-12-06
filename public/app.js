@@ -89,6 +89,12 @@ async function apiDelete(endpoint) {
   });
 }
 
+async function apiGet(url) {
+  return fetch(url, {
+    credentials: 'include'
+  });
+}
+
 // ============================================================================
 // Authentication Functions
 // ============================================================================
@@ -749,7 +755,7 @@ async function setupArrWebhook(type) {
 // Load configuration from server
 async function loadConfig() {
   try {
-    const response = await fetch(`${API_BASE}/api/config/raw`);
+    const response = await apiGet(`${API_BASE}/api/config/raw`);
     const data = await response.json();
     currentConfig = data.config;
     populateForm(currentConfig);
@@ -884,6 +890,7 @@ function populateForm(config) {
   document.getElementById('msgNoResults').value = msg.noResults || '';
   document.getElementById('msgSearchResults').value = msg.searchResults || '';
   document.getElementById('msgSelectPrompt').value = msg.selectPrompt || '';
+  document.getElementById('msgNoRecommendations').value = msg.noRecommendations || '';
   document.getElementById('msgSelectRange').value = msg.selectRange || '';
   document.getElementById('msgNothingToSelect').value = msg.nothingToSelect || '';
   document.getElementById('msgNothingToConfirm').value = msg.nothingToConfirm || '';
@@ -936,7 +943,7 @@ async function updateStatus() {
   const alertText = document.getElementById('alertText');
 
   try {
-    const response = await fetch(`${API_BASE}/api/config`);
+    const response = await apiGet(`${API_BASE}/api/config`);
     const data = await response.json();
 
     if (data.status.complete) {
@@ -1247,6 +1254,7 @@ function gatherFormData() {
       noResults: document.getElementById('msgNoResults').value.trim() || undefined,
       searchResults: document.getElementById('msgSearchResults').value.trim() || undefined,
       selectPrompt: document.getElementById('msgSelectPrompt').value.trim() || undefined,
+      noRecommendations: document.getElementById('msgNoRecommendations').value.trim() || undefined,
       selectRange: document.getElementById('msgSelectRange').value.trim() || undefined,
       nothingToSelect: document.getElementById('msgNothingToSelect').value.trim() || undefined,
       nothingToConfirm: document.getElementById('msgNothingToConfirm').value.trim() || undefined,
@@ -1361,7 +1369,8 @@ async function loadSystemPrompt(savedPrompt) {
 
   // Otherwise fetch the default
   try {
-    const response = await fetch('/api/config/default-system-prompt', {
+    const response = await fetch(`${API_BASE}/api/config/default-system-prompt`, {
+      credentials: 'include',
       headers: { 'x-csrf-token': csrfToken }
     });
     if (response.ok) {
@@ -1388,7 +1397,8 @@ async function resetSystemPrompt() {
 
   // Otherwise fetch it
   try {
-    const response = await fetch('/api/config/default-system-prompt', {
+    const response = await fetch(`${API_BASE}/api/config/default-system-prompt`, {
+      credentials: 'include',
       headers: { 'x-csrf-token': csrfToken }
     });
     if (response.ok) {
@@ -1604,7 +1614,7 @@ function handleUserTableAction(event) {
 // Load users from server
 async function loadUsers() {
   try {
-    const response = await fetch(`${API_BASE}/api/users`);
+    const response = await apiGet(`${API_BASE}/api/users`);
     const data = await response.json();
     users = data.users || [];
     renderUsersTable();

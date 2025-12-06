@@ -190,6 +190,9 @@ export const AppConfigSchema = z.object({
     searchResults: z.string().default('Found {count} results for "{query}":'),
     selectPrompt: z.string().default('Reply with a number, or search for something else.'),
 
+    // Recommendations
+    noRecommendations: z.string().default("Couldn't find any recommendations matching your criteria. Try a different request!"),
+
     // Confirmation
     confirmPrompt: z.string().default('YES to add, NO to cancel, or pick a different number.'),
     confirmAnimePrompt: z.string().default('YES to add to anime library, NO to cancel, or pick a different number.'),

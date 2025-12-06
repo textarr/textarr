@@ -17,7 +17,7 @@ A multi-platform messaging bot that lets you request movies and TV shows using n
 
 ### Prerequisites
 
-- Node.js 22+
+- Bun 1.0+
 - At least one messaging platform:
   - Twilio account (for SMS)
   - Telegram Bot Token
@@ -34,10 +34,10 @@ git clone https://github.com/yourusername/textarr.git
 cd textarr
 
 # Install dependencies
-npm install
+bun install
 
 # Start the application
-npm run dev
+bun run dev
 
 # Open http://localhost:3030 to configure
 ```
@@ -46,7 +46,7 @@ npm run dev
 
 **Option 1: Web Interface (Recommended)**
 
-1. Start the application: `npm run dev`
+1. Start the application: `bun run dev`
 2. Open http://localhost:3030
 3. Fill in your configuration
 4. Click "Save Configuration"
@@ -253,6 +253,52 @@ Bot: 📥 Currently downloading:
 | `Yes` / `No` | Confirm or cancel |
 | `1`, `2`, `3`... | Select from list |
 
+### Recommendations
+
+Ask for suggestions naturally:
+
+| Query Type | Examples |
+|------------|----------|
+| **Trending** | "What's trending?", "What's hot right now?" |
+| **Popular** | "What should I watch?", "What's good?" |
+| **Top Rated** | "Best rated shows", "Highest rated movies" |
+| **New Releases** | "Any new movies?", "What just came out?" |
+| **Coming Soon** | "What movies are coming out?" |
+| **Airing Today** | "What's on TV today?" |
+| **By Genre** | "Recommend a horror movie", "Comedy shows" |
+| **Similar** | "Something like Breaking Bad" |
+| **By Theme** | "Movies about time travel", "Zombie shows" |
+| **By Era** | "80s horror movies", "Shows from 2024" |
+| **By Provider** | "What's good on Netflix?" |
+| **By Network** | "HBO shows", "Netflix originals" |
+| **Combined** | "Highly rated sci-fi from 2024" |
+
+Example:
+
+```
+You: What's trending?
+Bot: ⭐ Trending Content:
+
+1. 🎬 Dune: Part Two (2024) ⭐8.5
+2. 📺 Fallout (2024) ⭐8.7
+3. 🎬 Godzilla x Kong (2024) ⭐7.1
+4. 📺 3 Body Problem (2024) ⭐7.8
+5. 🎬 Civil War (2024) ⭐7.2
+
+Reply with a number, or search for something else.
+
+You: 2
+Bot: 📺 Found: Fallout (2024) - TV Show ⭐ 8.7 | 1 season
+
+Which seasons?
+1. All
+2. First season
+3. Latest season
+4. Future only
+
+Reply with a number.
+```
+
 ## AI Providers
 
 ### OpenAI (Default)
@@ -275,25 +321,25 @@ Supported models:
 
 ```bash
 # Run in development mode (with hot reload)
-npm run dev
+bun run dev
 
 # Run tests
-npm test
+bun test
 
 # Run tests with coverage
-npm run test:coverage
+bun test --coverage
 
 # Lint
-npm run lint
+bun run lint
 
 # Format
-npm run format
+bun run format
 
 # Type check
-npm run typecheck
+bun run typecheck
 
 # Build for production
-npm run build
+bun run build
 ```
 
 ## Deployment
@@ -453,10 +499,10 @@ Cloudflare Tunnel (formerly Argo Tunnel) provides a similar solution using Cloud
 
 ```bash
 # Build
-npm run build
+bun run build
 
 # Start
-NODE_ENV=production node dist/index.js
+NODE_ENV=production bun dist/index.js
 ```
 
 ## API Endpoints
@@ -554,13 +600,13 @@ Each user can have multiple platform identities:
 
 ## Tech Stack
 
-- **Runtime**: Node.js 22
+- **Runtime**: Bun 1.0+
 - **Language**: TypeScript 5.7
 - **Framework**: Fastify 5
 - **AI SDK**: Vercel AI SDK 5 (OpenAI/Anthropic/Google)
 - **Validation**: Zod
 - **Messaging**: Twilio (SMS), grammy (Telegram), discord.js (Discord), @slack/bolt (Slack)
-- **Testing**: Vitest
+- **Testing**: Bun Test
 
 ## Security
 

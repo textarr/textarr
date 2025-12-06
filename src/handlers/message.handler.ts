@@ -6,6 +6,7 @@ import type {
   ParsedRequest,
   AnimeStatus,
   LibraryStatus,
+  RecommendationParams,
 } from '../schemas/index.js';
 import { createPlatformUserId, parsePlatformUserId, type PlatformUserId, type Platform } from '../messaging/types.js';
 import { EMOJI, MONITOR_LABELS, SEASON_MONITOR_TYPES, getMediaEmoji, getMediaTypeLabel } from '../constants/index.js';
@@ -171,6 +172,9 @@ export class MessageHandler {
         case 'add':
         case 'search':
           return await this.handleMediaRequest(userId, parsed);
+
+        case 'recommend':
+          return await this.handleRecommendationRequest(userId, parsed);
 
         default:
           return {
@@ -1098,5 +1102,496 @@ export class MessageHandler {
       default:
         return false;
     }
+  }
+
+  /**
+   * Handle a recommendation request
+   */
+  private async handleRecommendationRequest(
+    userId: PlatformUserId,
+    parsed: ParsedRequest
+  ): Promise<MessageResponse> {
+    const params = parsed.recommendationParams ?? {
+      type: 'popular' as const,
+      mediaType: 'any' as const,
+      genre: null,
+      similarTo: null,
+      timeWindow: null,
+      keyword: null,
+      year: null,
+      decade: null,
+      minRating: null,
+      provider: null,
+      network: null,
+    };
+
+    this.logger.info({ params }, 'Processing recommendation request');
+
+    try {
+      let results: MediaSearchResult[] = [];
+      let label: string;
+
+      switch (params.type) {
+        case 'trending':
+          ({ results, label } = await this.fetchTrendingRecommendations(params));
+          break;
+
+        case 'popular':
+          ({ results, label } = await this.fetchPopularRecommendations(params));
+          break;
+
+        case 'top_rated':
+          ({ results, label } = await this.fetchTopRatedRecommendations(params));
+          break;
+
+        case 'new_releases':
+          ({ results, label } = await this.fetchNewReleasesRecommendations(params));
+          break;
+
+        case 'upcoming':
+          results = await this.services.tmdb.getUpcoming();
+          label = 'Upcoming Movies';
+          break;
+
+        case 'airing_today':
+          results = await this.services.tmdb.getAiringToday();
+          label = 'Airing Today';
+          break;
+
+        case 'genre':
+          ({ results, label } = await this.fetchGenreRecommendations(params));
+          break;
+
+        case 'similar':
+          if (!params.similarTo) {
+            return { text: `${EMOJI.warning} What title would you like similar recommendations for?\n\nTry: "Something like Breaking Bad"` };
+          }
+          results = await this.services.tmdb.getSimilarTo(params.similarTo);
+          label = `Similar to "${params.similarTo}"`;
+          break;
+
+        case 'keyword':
+          ({ results, label } = await this.fetchKeywordRecommendations(params));
+          break;
+
+        case 'by_year':
+          ({ results, label } = await this.fetchByYearRecommendations(params));
+          break;
+
+        case 'by_provider':
+          // Provider-based recommendations require watch region
+          label = params.provider ? `On ${params.provider}` : 'Streaming Recommendations';
+          results = []; // TODO: Implement when provider IDs are available
+          break;
+
+        case 'by_network':
+          // Network-based recommendations
+          label = params.network ? `${params.network} Shows` : 'Network Recommendations';
+          results = []; // TODO: Implement when network IDs are available
+          break;
+
+        default:
+          ({ results, label } = await this.fetchPopularRecommendations(params));
+      }
+
+      // Enrich with library status
+      results = await this.enrichWithLibraryStatus(results);
+
+      // Limit results
+      results = results.slice(0, this.config.session.maxSearchResults);
+
+      if (results.length === 0) {
+        return { text: `${EMOJI.search} ${this.config.messages.noRecommendations}` };
+      }
+
+      // Store results in session and show selection prompt
+      this.services.session.setPendingResults(userId, results);
+      return { text: this.formatRecommendationPrompt(results, label) };
+    } catch (error) {
+      this.logger.error({ error, params }, 'Failed to fetch recommendations');
+      return { text: `${EMOJI.warning} ${this.config.messages.genericError}` };
+    }
+  }
+
+  /**
+   * Fetch trending recommendations
+   */
+  private async fetchTrendingRecommendations(
+    params: RecommendationParams
+  ): Promise<{ results: MediaSearchResult[]; label: string }> {
+    const mediaType =
+      params.mediaType === 'any'
+        ? 'all'
+        : params.mediaType === 'movie'
+        ? 'movie'
+        : 'tv';
+    const timeWindow = params.timeWindow ?? 'week';
+
+    const results = await this.services.tmdb.getTrending(mediaType, timeWindow);
+    const label = `Trending ${this.getMediaTypeLabel(params.mediaType)}`;
+
+    return { results, label };
+  }
+
+  /**
+   * Fetch popular recommendations
+   */
+  private async fetchPopularRecommendations(
+    params: RecommendationParams
+  ): Promise<{ results: MediaSearchResult[]; label: string }> {
+    if (params.mediaType === 'any') {
+      const [movies, shows] = await Promise.all([
+        this.services.tmdb.getPopular('movie'),
+        this.services.tmdb.getPopular('tv'),
+      ]);
+      return {
+        results: this.interleaveResults(movies, shows),
+        label: 'Popular Content',
+      };
+    }
+
+    const mediaType = params.mediaType === 'movie' ? 'movie' : 'tv';
+    const results = await this.services.tmdb.getPopular(mediaType);
+    const label = `Popular ${this.getMediaTypeLabel(params.mediaType)}`;
+
+    return { results, label };
+  }
+
+  /**
+   * Fetch top rated recommendations
+   */
+  private async fetchTopRatedRecommendations(
+    params: RecommendationParams
+  ): Promise<{ results: MediaSearchResult[]; label: string }> {
+    if (params.mediaType === 'any') {
+      const [movies, shows] = await Promise.all([
+        this.services.tmdb.getTopRated('movie'),
+        this.services.tmdb.getTopRated('tv'),
+      ]);
+      return {
+        results: this.interleaveResults(movies, shows),
+        label: 'Top Rated',
+      };
+    }
+
+    const mediaType = params.mediaType === 'movie' ? 'movie' : 'tv';
+    const results = await this.services.tmdb.getTopRated(mediaType);
+    const label = `Top Rated ${this.getMediaTypeLabel(params.mediaType)}`;
+
+    return { results, label };
+  }
+
+  /**
+   * Fetch new releases recommendations
+   */
+  private async fetchNewReleasesRecommendations(
+    params: RecommendationParams
+  ): Promise<{ results: MediaSearchResult[]; label: string }> {
+    if (params.mediaType === 'any') {
+      const [movies, shows] = await Promise.all([
+        this.services.tmdb.getNowPlaying(),
+        this.services.tmdb.getOnTheAir(),
+      ]);
+      return {
+        results: this.interleaveResults(movies, shows),
+        label: 'New Releases',
+      };
+    }
+
+    if (params.mediaType === 'movie') {
+      const results = await this.services.tmdb.getNowPlaying();
+      return { results, label: 'New Movies' };
+    }
+
+    const results = await this.services.tmdb.getOnTheAir();
+    return { results, label: 'New TV Shows' };
+  }
+
+  /**
+   * Fetch genre-based recommendations
+   */
+  private async fetchGenreRecommendations(
+    params: RecommendationParams
+  ): Promise<{ results: MediaSearchResult[]; label: string }> {
+    const genre = params.genre ?? 'drama';
+    const genreLabel = this.capitalizeGenre(genre);
+
+    // Build date filters for decade/year
+    const dateFilters = this.buildDateFilters(params);
+
+    if (params.mediaType === 'any') {
+      const movieGenreId = this.services.tmdb.getGenreId(genre, 'movie');
+      const tvGenreId = this.services.tmdb.getGenreId(genre, 'tv');
+
+      const [movies, shows] = await Promise.all([
+        movieGenreId
+          ? this.services.tmdb.discover({
+              mediaType: 'movie',
+              genreId: movieGenreId,
+              minVoteCount: 50,
+              minVoteAverage: params.minRating ?? undefined,
+              ...dateFilters.movie,
+            })
+          : Promise.resolve([]),
+        tvGenreId
+          ? this.services.tmdb.discover({
+              mediaType: 'tv',
+              genreId: tvGenreId,
+              minVoteCount: 20,
+              minVoteAverage: params.minRating ?? undefined,
+              ...dateFilters.tv,
+            })
+          : Promise.resolve([]),
+      ]);
+
+      return {
+        results: this.interleaveResults(movies, shows),
+        label: this.buildGenreLabel(genreLabel, params),
+      };
+    }
+
+    const mediaType = params.mediaType === 'movie' ? 'movie' : 'tv';
+    const genreId = this.services.tmdb.getGenreId(genre, mediaType);
+
+    if (!genreId) {
+      // Fallback to popular if genre not found
+      return this.fetchPopularRecommendations(params);
+    }
+
+    const results = await this.services.tmdb.discover({
+      mediaType,
+      genreId,
+      minVoteCount: mediaType === 'movie' ? 50 : 20,
+      minVoteAverage: params.minRating ?? undefined,
+      ...(mediaType === 'movie' ? dateFilters.movie : dateFilters.tv),
+    });
+
+    return {
+      results,
+      label: this.buildGenreLabel(genreLabel, params),
+    };
+  }
+
+  /**
+   * Fetch keyword-based recommendations
+   */
+  private async fetchKeywordRecommendations(
+    params: RecommendationParams
+  ): Promise<{ results: MediaSearchResult[]; label: string }> {
+    const keyword = params.keyword;
+    if (!keyword) {
+      return this.fetchPopularRecommendations(params);
+    }
+
+    // Search for the keyword ID first
+    const keywords = await this.services.tmdb.searchKeywords(keyword);
+    if (keywords.length === 0) {
+      this.logger.warn({ keyword }, 'No keyword found, falling back to popular');
+      return this.fetchPopularRecommendations(params);
+    }
+
+    const keywordIds = keywords.slice(0, 3).map((k) => k.id);
+    const keywordLabel = this.capitalizeGenre(keyword);
+
+    if (params.mediaType === 'any') {
+      const [movies, shows] = await Promise.all([
+        this.services.tmdb.discover({ mediaType: 'movie', keywordIds, minVoteCount: 20 }),
+        this.services.tmdb.discover({ mediaType: 'tv', keywordIds, minVoteCount: 10 }),
+      ]);
+
+      return {
+        results: this.interleaveResults(movies, shows),
+        label: `${keywordLabel} Content`,
+      };
+    }
+
+    const mediaType = params.mediaType === 'movie' ? 'movie' : 'tv';
+    const results = await this.services.tmdb.discover({
+      mediaType,
+      keywordIds,
+      minVoteCount: mediaType === 'movie' ? 20 : 10,
+    });
+
+    return {
+      results,
+      label: `${keywordLabel} ${this.getMediaTypeLabel(params.mediaType)}`,
+    };
+  }
+
+  /**
+   * Fetch by year/decade recommendations
+   */
+  private async fetchByYearRecommendations(
+    params: RecommendationParams
+  ): Promise<{ results: MediaSearchResult[]; label: string }> {
+    const dateFilters = this.buildDateFilters(params);
+    const yearLabel = params.year
+      ? `${params.year}`
+      : params.decade
+      ? `${params.decade}`
+      : 'Recent';
+
+    if (params.mediaType === 'any') {
+      const [movies, shows] = await Promise.all([
+        this.services.tmdb.discover({
+          mediaType: 'movie',
+          minVoteCount: 50,
+          ...dateFilters.movie,
+        }),
+        this.services.tmdb.discover({
+          mediaType: 'tv',
+          minVoteCount: 20,
+          ...dateFilters.tv,
+        }),
+      ]);
+
+      return {
+        results: this.interleaveResults(movies, shows),
+        label: `${yearLabel} Content`,
+      };
+    }
+
+    const mediaType = params.mediaType === 'movie' ? 'movie' : 'tv';
+    const results = await this.services.tmdb.discover({
+      mediaType,
+      minVoteCount: mediaType === 'movie' ? 50 : 20,
+      ...(mediaType === 'movie' ? dateFilters.movie : dateFilters.tv),
+    });
+
+    return {
+      results,
+      label: `${yearLabel} ${this.getMediaTypeLabel(params.mediaType)}`,
+    };
+  }
+
+  /**
+   * Build date filters from params
+   */
+  private buildDateFilters(params: RecommendationParams): {
+    movie: { releaseDateGte?: string; releaseDateLte?: string };
+    tv: { releaseDateGte?: string; releaseDateLte?: string };
+  } {
+    const result = {
+      movie: {} as { releaseDateGte?: string; releaseDateLte?: string },
+      tv: {} as { releaseDateGte?: string; releaseDateLte?: string },
+    };
+
+    if (params.year) {
+      const yearStr = params.year.toString();
+      result.movie.releaseDateGte = `${yearStr}-01-01`;
+      result.movie.releaseDateLte = `${yearStr}-12-31`;
+      result.tv.releaseDateGte = `${yearStr}-01-01`;
+      result.tv.releaseDateLte = `${yearStr}-12-31`;
+    } else if (params.decade) {
+      const decadeMatch = params.decade.match(/(\d{2})s?/i);
+      if (decadeMatch) {
+        const decadeNum = parseInt(decadeMatch[1]!, 10);
+        const startYear = decadeNum < 30 ? 2000 + decadeNum : 1900 + decadeNum;
+        const endYear = startYear + 9;
+        result.movie.releaseDateGte = `${startYear}-01-01`;
+        result.movie.releaseDateLte = `${endYear}-12-31`;
+        result.tv.releaseDateGte = `${startYear}-01-01`;
+        result.tv.releaseDateLte = `${endYear}-12-31`;
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Build genre label with optional year/decade
+   */
+  private buildGenreLabel(genreLabel: string, params: RecommendationParams): string {
+    const parts = [];
+    if (params.decade) parts.push(params.decade);
+    if (params.year) parts.push(params.year.toString());
+    parts.push(genreLabel);
+    parts.push(this.getMediaTypeLabel(params.mediaType));
+    return parts.join(' ');
+  }
+
+  /**
+   * Interleave two result arrays (alternating items)
+   */
+  private interleaveResults(
+    arr1: MediaSearchResult[],
+    arr2: MediaSearchResult[]
+  ): MediaSearchResult[] {
+    const result: MediaSearchResult[] = [];
+    const maxLen = Math.max(arr1.length, arr2.length);
+
+    for (let i = 0; i < maxLen; i++) {
+      if (i < arr1.length) result.push(arr1[i]!);
+      if (i < arr2.length) result.push(arr2[i]!);
+    }
+
+    return result;
+  }
+
+  /**
+   * Get display label for media type preference
+   */
+  private getMediaTypeLabel(mediaType: 'movie' | 'tv_show' | 'any'): string {
+    switch (mediaType) {
+      case 'movie':
+        return 'Movies';
+      case 'tv_show':
+        return 'Shows';
+      default:
+        return 'Content';
+    }
+  }
+
+  /**
+   * Capitalize genre name for display
+   */
+  private capitalizeGenre(genre: string): string {
+    return genre
+      .replace(/_/g, ' ')
+      .split(' ')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  }
+
+  /**
+   * Format recommendation results prompt
+   */
+  private formatRecommendationPrompt(
+    results: MediaSearchResult[],
+    label: string
+  ): string {
+    const lines = [`${EMOJI.star} ${label}:\n`];
+
+    results.forEach((result, index) => {
+      const emoji = getMediaEmoji(result.mediaType);
+      const year = result.year ? ` (${result.year})` : '';
+      const rating = result.rating ? ` ${EMOJI.star}${result.rating.toFixed(1)}` : '';
+
+      let statusIndicator = '';
+      if (result.inLibrary) {
+        switch (result.libraryStatus) {
+          case 'available':
+            statusIndicator = ` ${EMOJI.check}`;
+            break;
+          case 'partial': {
+            const pct = result.episodeStats?.percentComplete ?? 0;
+            statusIndicator = ` (${Math.round(pct)}%)`;
+            break;
+          }
+          case 'monitored':
+            statusIndicator = ` ${EMOJI.wait}`;
+            break;
+          default:
+            statusIndicator = ` ${EMOJI.check}`;
+        }
+      }
+
+      lines.push(
+        `${index + 1}. ${emoji} ${result.title}${year}${rating}${statusIndicator}`
+      );
+    });
+
+    lines.push(`\n${this.config.messages.selectPrompt}`);
+    return lines.join('\n');
   }
 }

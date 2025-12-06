@@ -70,6 +70,77 @@ interface TMDBTvDetails {
 /** Animation genre ID in TMDB (same for movies and TV) */
 const ANIMATION_GENRE_ID = 16;
 
+/** Movie genre IDs from TMDB */
+const MOVIE_GENRES: Record<string, number> = {
+  action: 28,
+  adventure: 12,
+  animation: 16,
+  comedy: 35,
+  crime: 80,
+  documentary: 99,
+  drama: 18,
+  family: 10751,
+  fantasy: 14,
+  history: 36,
+  horror: 27,
+  music: 10402,
+  mystery: 9648,
+  romance: 10749,
+  science_fiction: 878,
+  thriller: 53,
+  tv_movie: 10770,
+  war: 10752,
+  western: 37,
+};
+
+/** TV genre IDs from TMDB (some differ from movies) */
+const TV_GENRES: Record<string, number> = {
+  action_adventure: 10759,
+  animation: 16,
+  comedy: 35,
+  crime: 80,
+  documentary: 99,
+  drama: 18,
+  family: 10751,
+  kids: 10762,
+  mystery: 9648,
+  news: 10763,
+  reality: 10764,
+  sci_fi_fantasy: 10765,
+  soap: 10766,
+  talk: 10767,
+  war_politics: 10768,
+  western: 37,
+};
+
+/** Genre name aliases for normalization */
+const GENRE_ALIASES: Record<string, string> = {
+  scifi: 'science_fiction',
+  'sci-fi': 'science_fiction',
+  sf: 'science_fiction',
+  'sci fi': 'science_fiction',
+  'science fiction': 'science_fiction',
+  romcom: 'comedy',
+  'romantic comedy': 'comedy',
+  action: 'action',
+  horror: 'horror',
+  comedy: 'comedy',
+  drama: 'drama',
+  thriller: 'thriller',
+  mystery: 'mystery',
+  romance: 'romance',
+  fantasy: 'fantasy',
+  animation: 'animation',
+  documentary: 'documentary',
+  crime: 'crime',
+  western: 'western',
+  war: 'war',
+  family: 'family',
+  history: 'history',
+  music: 'music',
+  adventure: 'adventure',
+};
+
 /** Anime detection result */
 export type AnimeDetectionResult = 'anime' | 'regular' | 'uncertain';
 
@@ -284,6 +355,357 @@ export class TMDBService {
       this.logger.error({ error, tmdbId, mediaType }, 'Failed to detect anime');
       return 'regular';
     }
+  }
+
+  /**
+   * Get trending movies and/or TV shows
+   *
+   * @param mediaType - 'movie', 'tv', or 'all' for both
+   * @param timeWindow - 'day' or 'week'
+   */
+  async getTrending(
+    mediaType: 'movie' | 'tv' | 'all' = 'all',
+    timeWindow: 'day' | 'week' = 'week'
+  ): Promise<MediaSearchResult[]> {
+    this.logger.info({ mediaType, timeWindow }, 'Fetching trending content');
+
+    try {
+      const response = await this.get<TMDBSearchMultiResponse>(
+        `/trending/${mediaType}/${timeWindow}`
+      );
+
+      // Filter out persons if mediaType was 'all'
+      const mediaResults = response.results.filter(
+        (r): r is TMDBSearchResult & { media_type: 'movie' | 'tv' } =>
+          r.media_type === 'movie' || r.media_type === 'tv'
+      );
+
+      const results = mediaResults.map((r) => this.toSearchResult(r));
+
+      this.logger.info(
+        { mediaType, timeWindow, resultCount: results.length },
+        'Trending fetch complete'
+      );
+
+      return results;
+    } catch (error) {
+      this.logger.error({ error, mediaType, timeWindow }, 'Failed to fetch trending');
+      throw error;
+    }
+  }
+
+  /**
+   * Get popular movies or TV shows
+   */
+  async getPopular(mediaType: 'movie' | 'tv'): Promise<MediaSearchResult[]> {
+    this.logger.info({ mediaType }, 'Fetching popular content');
+
+    try {
+      const endpoint = mediaType === 'movie' ? '/movie/popular' : '/tv/popular';
+      const response = await this.get<TMDBSearchMultiResponse>(endpoint);
+
+      const results = response.results.map((r) =>
+        this.toSearchResult({ ...r, media_type: mediaType })
+      );
+
+      this.logger.info({ mediaType, resultCount: results.length }, 'Popular fetch complete');
+      return results;
+    } catch (error) {
+      this.logger.error({ error, mediaType }, 'Failed to fetch popular');
+      throw error;
+    }
+  }
+
+  /**
+   * Get top rated movies or TV shows
+   */
+  async getTopRated(mediaType: 'movie' | 'tv'): Promise<MediaSearchResult[]> {
+    this.logger.info({ mediaType }, 'Fetching top rated content');
+
+    try {
+      const endpoint = mediaType === 'movie' ? '/movie/top_rated' : '/tv/top_rated';
+      const response = await this.get<TMDBSearchMultiResponse>(endpoint);
+
+      const results = response.results.map((r) =>
+        this.toSearchResult({ ...r, media_type: mediaType })
+      );
+
+      this.logger.info({ mediaType, resultCount: results.length }, 'Top rated fetch complete');
+      return results;
+    } catch (error) {
+      this.logger.error({ error, mediaType }, 'Failed to fetch top rated');
+      throw error;
+    }
+  }
+
+  /**
+   * Get movies currently in theaters
+   */
+  async getNowPlaying(): Promise<MediaSearchResult[]> {
+    this.logger.info('Fetching now playing movies');
+
+    try {
+      const response = await this.get<TMDBSearchMultiResponse>('/movie/now_playing');
+
+      const results = response.results.map((r) =>
+        this.toSearchResult({ ...r, media_type: 'movie' })
+      );
+
+      this.logger.info({ resultCount: results.length }, 'Now playing fetch complete');
+      return results;
+    } catch (error) {
+      this.logger.error({ error }, 'Failed to fetch now playing');
+      throw error;
+    }
+  }
+
+  /**
+   * Get upcoming movies
+   */
+  async getUpcoming(): Promise<MediaSearchResult[]> {
+    this.logger.info('Fetching upcoming movies');
+
+    try {
+      const response = await this.get<TMDBSearchMultiResponse>('/movie/upcoming');
+
+      const results = response.results.map((r) =>
+        this.toSearchResult({ ...r, media_type: 'movie' })
+      );
+
+      this.logger.info({ resultCount: results.length }, 'Upcoming fetch complete');
+      return results;
+    } catch (error) {
+      this.logger.error({ error }, 'Failed to fetch upcoming');
+      throw error;
+    }
+  }
+
+  /**
+   * Get TV shows airing in the next 7 days
+   */
+  async getOnTheAir(): Promise<MediaSearchResult[]> {
+    this.logger.info('Fetching TV on the air');
+
+    try {
+      const response = await this.get<TMDBSearchMultiResponse>('/tv/on_the_air');
+
+      const results = response.results.map((r) =>
+        this.toSearchResult({ ...r, media_type: 'tv' })
+      );
+
+      this.logger.info({ resultCount: results.length }, 'On the air fetch complete');
+      return results;
+    } catch (error) {
+      this.logger.error({ error }, 'Failed to fetch on the air');
+      throw error;
+    }
+  }
+
+  /**
+   * Get TV shows airing today
+   */
+  async getAiringToday(): Promise<MediaSearchResult[]> {
+    this.logger.info('Fetching TV airing today');
+
+    try {
+      const response = await this.get<TMDBSearchMultiResponse>('/tv/airing_today');
+
+      const results = response.results.map((r) =>
+        this.toSearchResult({ ...r, media_type: 'tv' })
+      );
+
+      this.logger.info({ resultCount: results.length }, 'Airing today fetch complete');
+      return results;
+    } catch (error) {
+      this.logger.error({ error }, 'Failed to fetch airing today');
+      throw error;
+    }
+  }
+
+  /**
+   * Get recommendations for a specific media item
+   *
+   * @param tmdbId - TMDB ID of the source media
+   * @param mediaType - 'movie' or 'tv'
+   */
+  async getRecommendations(
+    tmdbId: number,
+    mediaType: 'movie' | 'tv'
+  ): Promise<MediaSearchResult[]> {
+    this.logger.info({ tmdbId, mediaType }, 'Fetching recommendations');
+
+    try {
+      const endpoint =
+        mediaType === 'movie'
+          ? `/movie/${tmdbId}/recommendations`
+          : `/tv/${tmdbId}/recommendations`;
+
+      const response = await this.get<TMDBSearchMultiResponse>(endpoint);
+
+      const results = response.results.map((r) =>
+        this.toSearchResult({ ...r, media_type: mediaType })
+      );
+
+      this.logger.info(
+        { tmdbId, mediaType, resultCount: results.length },
+        'Recommendations fetch complete'
+      );
+
+      return results;
+    } catch (error) {
+      this.logger.error({ error, tmdbId, mediaType }, 'Failed to fetch recommendations');
+      throw error;
+    }
+  }
+
+  /**
+   * Find similar content by searching for a title first, then getting recommendations
+   *
+   * @param title - Title to find similar content for
+   */
+  async getSimilarTo(title: string): Promise<MediaSearchResult[]> {
+    this.logger.info({ title }, 'Finding similar content');
+
+    // First search for the title
+    const searchResults = await this.searchMulti(title);
+
+    if (searchResults.length === 0) {
+      this.logger.warn({ title }, 'No results found for similar search');
+      return [];
+    }
+
+    // Use the top result
+    const source = searchResults[0]!;
+    const mediaType = source.mediaType === 'movie' ? 'movie' : 'tv';
+
+    // Get recommendations for that title
+    return this.getRecommendations(source.id, mediaType);
+  }
+
+  /**
+   * Discover content with filters (genre, sort, vote average, etc.)
+   */
+  async discover(options: {
+    mediaType: 'movie' | 'tv';
+    genreId?: number;
+    keywordIds?: number[];
+    sortBy?:
+      | 'popularity.desc'
+      | 'vote_average.desc'
+      | 'primary_release_date.desc'
+      | 'first_air_date.desc';
+    minVoteCount?: number;
+    minVoteAverage?: number;
+    releaseDateGte?: string;
+    releaseDateLte?: string;
+    watchProviders?: number[];
+    networks?: number[];
+    watchRegion?: string;
+  }): Promise<MediaSearchResult[]> {
+    const { mediaType, genreId, keywordIds, sortBy, minVoteCount, minVoteAverage, releaseDateGte, releaseDateLte, watchProviders, networks, watchRegion } = options;
+
+    this.logger.info({ options }, 'Discovering content');
+
+    const params: Record<string, string | number | boolean> = {
+      sort_by: sortBy ?? 'popularity.desc',
+      include_adult: false,
+    };
+
+    if (genreId) params.with_genres = genreId;
+    if (keywordIds?.length) params.with_keywords = keywordIds.join(',');
+    if (minVoteCount) params['vote_count.gte'] = minVoteCount;
+    if (minVoteAverage) params['vote_average.gte'] = minVoteAverage;
+    if (watchProviders?.length) params.with_watch_providers = watchProviders.join('|');
+    if (watchRegion) params.watch_region = watchRegion;
+    if (networks?.length) params.with_networks = networks.join('|');
+
+    // Date filters differ by media type
+    if (mediaType === 'movie') {
+      if (releaseDateGte) params['primary_release_date.gte'] = releaseDateGte;
+      if (releaseDateLte) params['primary_release_date.lte'] = releaseDateLte;
+    } else {
+      if (releaseDateGte) params['first_air_date.gte'] = releaseDateGte;
+      if (releaseDateLte) params['first_air_date.lte'] = releaseDateLte;
+    }
+
+    try {
+      const response = await this.get<TMDBSearchMultiResponse>(
+        `/discover/${mediaType}`,
+        params
+      );
+
+      const results = response.results.map((r) =>
+        this.toSearchResult({ ...r, media_type: mediaType })
+      );
+
+      this.logger.info({ mediaType, resultCount: results.length }, 'Discovery complete');
+
+      return results;
+    } catch (error) {
+      this.logger.error({ error, options }, 'Discovery failed');
+      throw error;
+    }
+  }
+
+  /**
+   * Search for keywords by name
+   */
+  async searchKeywords(query: string): Promise<{ id: number; name: string }[]> {
+    this.logger.info({ query }, 'Searching keywords');
+
+    try {
+      const response = await this.get<{
+        page: number;
+        results: { id: number; name: string }[];
+        total_pages: number;
+        total_results: number;
+      }>('/search/keyword', { query });
+
+      this.logger.info({ query, resultCount: response.results.length }, 'Keyword search complete');
+      return response.results;
+    } catch (error) {
+      this.logger.error({ error, query }, 'Keyword search failed');
+      throw error;
+    }
+  }
+
+  /**
+   * Get TMDB genre ID for a genre name and media type
+   */
+  getGenreId(genre: string, mediaType: 'movie' | 'tv'): number | null {
+    // Normalize the genre name
+    const normalizedGenre = genre.toLowerCase().replace(/[\s-]/g, '_');
+
+    // Check for aliases first
+    const mappedGenre = GENRE_ALIASES[normalizedGenre] ?? normalizedGenre;
+
+    // Look up in the appropriate genre map
+    if (mediaType === 'movie') {
+      const id = MOVIE_GENRES[mappedGenre];
+      if (id) return id;
+
+      // TV genres that map to movie equivalents
+      if (mappedGenre === 'action_adventure') return MOVIE_GENRES.action ?? null;
+      if (mappedGenre === 'sci_fi_fantasy') return MOVIE_GENRES.science_fiction ?? null;
+      if (mappedGenre === 'war_politics') return MOVIE_GENRES.war ?? null;
+    } else {
+      const id = TV_GENRES[mappedGenre];
+      if (id) return id;
+
+      // Movie genres that map to TV equivalents
+      if (mappedGenre === 'action') return TV_GENRES.action_adventure ?? null;
+      if (mappedGenre === 'adventure') return TV_GENRES.action_adventure ?? null;
+      if (mappedGenre === 'science_fiction') return TV_GENRES.sci_fi_fantasy ?? null;
+      if (mappedGenre === 'fantasy') return TV_GENRES.sci_fi_fantasy ?? null;
+      if (mappedGenre === 'war') return TV_GENRES.war_politics ?? null;
+      if (mappedGenre === 'romance') return TV_GENRES.drama ?? null; // TV doesn't have romance
+      if (mappedGenre === 'horror') return TV_GENRES.mystery ?? null; // Closest match
+      if (mappedGenre === 'thriller') return TV_GENRES.crime ?? null; // Closest match
+      if (mappedGenre === 'history') return TV_GENRES.documentary ?? null; // Closest match
+    }
+
+    this.logger.warn({ genre, normalizedGenre, mappedGenre, mediaType }, 'Unknown genre');
+    return null;
   }
 
   /**

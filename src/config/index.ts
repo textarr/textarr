@@ -125,6 +125,8 @@ export interface Config {
     noResults: string;
     searchResults: string;
     selectPrompt: string;
+    // Recommendations
+    noRecommendations: string;
     // Confirmation
     confirmPrompt: string;
     confirmAnimePrompt: string;

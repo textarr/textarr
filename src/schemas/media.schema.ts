@@ -26,6 +26,7 @@ export const ActionType = z.enum([
   'change_selection', // Pick a different option (while in confirmation)
   'decline', // Decline to continue (no, no thanks, I'm good)
   'continue', // Wants to continue but didn't specify what (yes, yeah)
+  'recommend', // Get recommendations (trending, popular, genre, similar, etc.)
   'admin_help', // Admin: show admin commands
   'admin_add', // Admin: add a user
   'admin_remove', // Admin: remove a user
@@ -50,6 +51,49 @@ export const AdminCommandSchema = z.object({
 export type AdminCommand = z.infer<typeof AdminCommandSchema>;
 
 /**
+ * Recommendation type enum - covers all TMDB recommendation capabilities
+ */
+export const RecommendationType = z.enum([
+  'trending', // /trending/{type}/{window}
+  'popular', // /movie/popular, /tv/popular
+  'top_rated', // /movie/top_rated, /tv/top_rated
+  'new_releases', // /movie/now_playing, /tv/on_the_air
+  'upcoming', // /movie/upcoming (movies only)
+  'airing_today', // /tv/airing_today (TV only)
+  'genre', // /discover with with_genres
+  'similar', // /{type}/{id}/recommendations
+  'keyword', // /discover with with_keywords (time travel, zombies, etc.)
+  'by_year', // /discover with date filters
+  'by_provider', // /discover with with_watch_providers
+  'by_network', // /discover with with_networks (TV only)
+]);
+export type RecommendationType = z.infer<typeof RecommendationType>;
+
+/**
+ * Media type preference for recommendations
+ */
+export const MediaTypePreference = z.enum(['movie', 'tv_show', 'any']);
+export type MediaTypePreference = z.infer<typeof MediaTypePreference>;
+
+/**
+ * Recommendation parameters extracted from user request
+ */
+export const RecommendationParamsSchema = z.object({
+  type: RecommendationType,
+  mediaType: MediaTypePreference.default('any'),
+  genre: z.string().nullable(), // Genre name: horror, comedy, etc.
+  similarTo: z.string().nullable(), // Title for similar recommendations
+  timeWindow: z.enum(['day', 'week']).nullable(), // For trending
+  keyword: z.string().nullable(), // Theme: time travel, zombies, heist
+  year: z.number().nullable(), // Specific year
+  decade: z.string().nullable(), // 80s, 90s, 2000s, etc.
+  minRating: z.number().nullable(), // Minimum vote average
+  provider: z.string().nullable(), // Netflix, HBO, etc.
+  network: z.string().nullable(), // HBO, AMC, etc. (TV only)
+});
+export type RecommendationParams = z.infer<typeof RecommendationParamsSchema>;
+
+/**
  * Parsed request from AI
  */
 export const ParsedRequestSchema = z.object({
@@ -62,6 +106,7 @@ export const ParsedRequestSchema = z.object({
   rawMessage: z.string().optional(),
   isAnimeRequest: z.boolean().optional(), // True if user explicitly mentioned "anime"
   adminCommand: AdminCommandSchema.optional(), // Admin command data
+  recommendationParams: RecommendationParamsSchema.optional(), // Recommendation parameters
 });
 export type ParsedRequest = z.infer<typeof ParsedRequestSchema>;
 

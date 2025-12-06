@@ -123,6 +123,7 @@ export function buildRuntimeConfig(appConfig: AppConfig): Config {
       noResults: appConfig.messages.noResults,
       searchResults: appConfig.messages.searchResults,
       selectPrompt: appConfig.messages.selectPrompt,
+      noRecommendations: appConfig.messages.noRecommendations,
       confirmPrompt: appConfig.messages.confirmPrompt,
       confirmAnimePrompt: appConfig.messages.confirmAnimePrompt,
       animeOrRegularPrompt: appConfig.messages.animeOrRegularPrompt,
