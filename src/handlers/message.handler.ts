@@ -343,6 +343,18 @@ export class MessageHandler {
                 const episodeFileCount = stats?.episodeFileCount ?? 0;
                 const episodeCount = stats?.episodeCount ?? 0;
                 const percentComplete = stats?.percentOfEpisodes ?? 0;
+                const seasonCount = stats?.seasonCount ?? series.seasons?.length ?? 0;
+
+                // Build per-season stats (excluding season 0 - specials)
+                const seasonStats = series.seasons
+                  ?.filter((s) => s.seasonNumber > 0)
+                  ?.map((s) => ({
+                    seasonNumber: s.seasonNumber,
+                    episodeFileCount: s.statistics?.episodeFileCount ?? 0,
+                    episodeCount: s.statistics?.episodeCount ?? 0,
+                    monitored: s.monitored,
+                  }))
+                  ?.sort((a, b) => a.seasonNumber - b.seasonNumber);
 
                 let status: LibraryStatus;
                 if (episodeCount === 0) {
@@ -359,9 +371,10 @@ export class MessageHandler {
                   ...result,
                   inLibrary: true,
                   libraryStatus: status,
+                  isMonitored: series.monitored,
                   episodeStats:
                     episodeCount > 0
-                      ? { episodeFileCount, episodeCount, percentComplete }
+                      ? { episodeFileCount, episodeCount, percentComplete, seasonCount, seasons: seasonStats }
                       : undefined,
                   rawData: { ...result.rawData, status: series.status },
                 };
@@ -672,32 +685,108 @@ export class MessageHandler {
   }
 
   /**
+   * Format per-season breakdown for TV shows
+   */
+  private formatSeasonBreakdown(seasons: Array<{ seasonNumber: number; episodeFileCount: number; episodeCount: number; monitored: boolean }>): string {
+    if (!seasons || seasons.length === 0) return '';
+
+    // For shows with many seasons, collapse completed ones
+    if (seasons.length > 6) {
+      const completed: number[] = [];
+      const incomplete: string[] = [];
+
+      for (const s of seasons) {
+        if (s.episodeCount > 0 && s.episodeFileCount === s.episodeCount) {
+          completed.push(s.seasonNumber);
+        } else if (s.episodeCount === 0) {
+          incomplete.push(`S${s.seasonNumber}: TBA`);
+        } else {
+          incomplete.push(`S${s.seasonNumber}: ${s.episodeFileCount}/${s.episodeCount}`);
+        }
+      }
+
+      const parts: string[] = [];
+      if (completed.length > 0) {
+        if (completed.length === 1) {
+          parts.push(`S${completed[0]}: ${EMOJI.check}`);
+        } else {
+          parts.push(`S${completed[0]}-${completed[completed.length - 1]}: ${EMOJI.check}`);
+        }
+      }
+      parts.push(...incomplete);
+      return parts.join(', ');
+    }
+
+    // For fewer seasons, show each one
+    return seasons
+      .map((s) => {
+        if (s.episodeCount === 0) {
+          return `S${s.seasonNumber}: TBA`;
+        }
+        if (s.episodeFileCount === s.episodeCount) {
+          return `S${s.seasonNumber}: ${s.episodeCount}/${s.episodeCount} ${EMOJI.check}`;
+        }
+        return `S${s.seasonNumber}: ${s.episodeFileCount}/${s.episodeCount}`;
+      })
+      .join(', ');
+  }
+
+  /**
    * Format already in library message with detailed status
    */
   private formatAlreadyInLibrary(media: MediaSearchResult): string {
     const emoji = getMediaEmoji(media.mediaType);
     const year = media.year ? ` (${media.year})` : '';
     const title = `${emoji} ${media.title}${year}`;
+    const rawStatus = (media.rawData?.status as string | undefined)?.toLowerCase();
+    const isContinuing = rawStatus === 'continuing';
 
     switch (media.libraryStatus) {
-      case 'available':
-        return `${formatMessage(this.config.messages.alreadyAvailable, { title })} ${EMOJI.check}`;
+      case 'available': {
+        let message = formatMessage(this.config.messages.alreadyAvailable, { title });
 
-      case 'partial':
+        // Add season count and episode total for TV shows
+        if (media.episodeStats && media.mediaType === 'tv_show') {
+          const { seasonCount, episodeCount } = media.episodeStats;
+          if (seasonCount && episodeCount) {
+            message += `\n${seasonCount} ${seasonCount === 1 ? 'season' : 'seasons'}, ${episodeCount} episodes`;
+          }
+        }
+
+        // For continuing shows, indicate monitoring status
+        if (isContinuing && media.isMonitored) {
+          message += `\n${EMOJI.wait} Watching for new episodes`;
+        }
+
+        return `${message} ${EMOJI.check}`;
+      }
+
+      case 'partial': {
         if (media.episodeStats) {
-          const { episodeFileCount, episodeCount, percentComplete } = media.episodeStats;
-          return formatMessage(this.config.messages.alreadyPartial, {
+          const { episodeFileCount, episodeCount, percentComplete, seasons } = media.episodeStats;
+          let message = formatMessage(this.config.messages.alreadyPartial, {
             title,
             episodeFileCount,
             episodeCount,
             percentComplete: Math.round(percentComplete),
           });
+
+          // Add per-season breakdown
+          if (seasons && seasons.length > 0) {
+            message += `\n${this.formatSeasonBreakdown(seasons)}`;
+          }
+
+          // Monitoring status for continuing shows
+          if (isContinuing && media.isMonitored) {
+            message += `\n${EMOJI.wait} Watching for new episodes`;
+          }
+
+          return message;
         }
         return formatMessage(this.config.messages.alreadyPartial, { title, episodeFileCount: '?', episodeCount: '?', percentComplete: '?' });
+      }
 
       case 'monitored': {
-        // Check raw status for more context (case-insensitive)
-        const rawStatus = (media.rawData?.status as string | undefined)?.toLowerCase();
         if (rawStatus === 'announced' || rawStatus === 'incinemas' || rawStatus === 'tba') {
           return formatMessage(this.config.messages.alreadyWaitingRelease, { title });
         }

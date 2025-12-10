@@ -150,12 +150,24 @@ export const LibraryStatus = z.enum([
 export type LibraryStatus = z.infer<typeof LibraryStatus>;
 
 /**
+ * Per-season statistics for TV shows
+ */
+export const SeasonStatsSchema = z.object({
+  seasonNumber: z.number(),
+  episodeFileCount: z.number(),
+  episodeCount: z.number(),
+  monitored: z.boolean(),
+});
+
+/**
  * Episode statistics for TV shows
  */
 export const EpisodeStatsSchema = z.object({
   episodeFileCount: z.number(),
   episodeCount: z.number(),
   percentComplete: z.number(),
+  seasonCount: z.number().optional(),
+  seasons: z.array(SeasonStatsSchema).optional(),
 });
 
 /**
@@ -177,6 +189,7 @@ export const MediaSearchResultSchema = z.object({
   rawData: z.record(z.unknown()), // Original API response
   animeStatus: AnimeStatus.optional(), // Anime detection result
   episodeStats: EpisodeStatsSchema.optional(), // Episode download stats for TV shows
+  isMonitored: z.boolean().optional(), // Whether the show is being monitored for new episodes
 });
 export type MediaSearchResult = z.infer<typeof MediaSearchResultSchema>;
 

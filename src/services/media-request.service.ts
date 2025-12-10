@@ -50,21 +50,28 @@ export class MediaRequestService {
 
   /**
    * Find request by Sonarr or Radarr ID
+   * Only returns pending/downloading requests to avoid duplicate notifications
    */
   findByArrId(type: 'sonarr' | 'radarr', arrId: number): MediaRequest | undefined {
     const config = loadConfig();
     return config.mediaRequests.find(
-      (r) => (type === 'sonarr' ? r.sonarrId : r.radarrId) === arrId
+      (r) =>
+        (type === 'sonarr' ? r.sonarrId : r.radarrId) === arrId &&
+        (r.status === 'pending' || r.status === 'downloading')
     );
   }
 
   /**
    * Find request by TMDB ID
+   * Only returns pending/downloading requests to avoid duplicate notifications
    */
   findByTmdbId(tmdbId: number, mediaType?: 'movie' | 'tv_show'): MediaRequest | undefined {
     const config = loadConfig();
     return config.mediaRequests.find(
-      (r) => r.tmdbId === tmdbId && (!mediaType || r.mediaType === mediaType)
+      (r) =>
+        r.tmdbId === tmdbId &&
+        (!mediaType || r.mediaType === mediaType) &&
+        (r.status === 'pending' || r.status === 'downloading')
     );
   }
 

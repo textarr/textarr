@@ -10,9 +10,17 @@ export const SonarrImageSchema = z.object({
   remoteUrl: z.string().optional(),
 });
 
+export const SonarrSeasonStatisticsSchema = z.object({
+  episodeFileCount: z.number().optional(),
+  episodeCount: z.number().optional(),
+  totalEpisodeCount: z.number().optional(),
+  percentOfEpisodes: z.number().optional(),
+});
+
 export const SonarrSeasonSchema = z.object({
   seasonNumber: z.number(),
   monitored: z.boolean(),
+  statistics: SonarrSeasonStatisticsSchema.optional(),
 });
 
 export const SonarrSeriesSchema = z.object({
