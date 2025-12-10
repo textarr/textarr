@@ -914,6 +914,11 @@
                   <p><strong>Radarr:</strong> Settings → Connect → Add → Webhook<br>
                   URL: <code id="radarrWebhookUrl"></code><br>
                   Events: On Download, On Upgrade</p>
+                  <p style="margin-top: 12px;"><strong>Required Header:</strong><br>
+                  Name: <code>X-Webhook-Secret</code><br>
+                  Value: <code id="webhookSecretDisplay" class="secret-value">Loading...</code>
+                  <button type="button" class="copy-btn-small" id="copyWebhookSecretBtn" title="Copy to clipboard">📋</button>
+                  </p>
                 </div>
               </div>
             </div>

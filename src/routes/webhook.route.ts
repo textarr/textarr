@@ -78,7 +78,7 @@ export async function webhookRoutes(
   fastify.post<{ Body: SonarrWebhookBody }>(
     '/webhooks/sonarr',
     async (request: FastifyRequest<{ Body: SonarrWebhookBody }>, reply: FastifyReply) => {
-      log.debug({ eventType: request.body.eventType }, 'Sonarr webhook received');
+      log.info({ eventType: request.body.eventType }, 'Sonarr webhook received');
 
       // Verify secret
       if (!verifySecret(request)) {
@@ -124,7 +124,7 @@ export async function webhookRoutes(
   fastify.post<{ Body: RadarrWebhookBody }>(
     '/webhooks/radarr',
     async (request: FastifyRequest<{ Body: RadarrWebhookBody }>, reply: FastifyReply) => {
-      log.debug({ eventType: request.body.eventType }, 'Radarr webhook received');
+      log.info({ eventType: request.body.eventType }, 'Radarr webhook received');
 
       // Verify secret
       if (!verifySecret(request)) {

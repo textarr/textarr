@@ -636,6 +636,7 @@ function setupEventListeners() {
   // Webhook setup buttons
   document.getElementById('setupSonarrWebhookBtn')?.addEventListener('click', () => setupArrWebhook('sonarr'));
   document.getElementById('setupRadarrWebhookBtn')?.addEventListener('click', () => setupArrWebhook('radarr'));
+  document.getElementById('copyWebhookSecretBtn')?.addEventListener('click', copyWebhookSecret);
 
   // Update webhook URLs when external URL changes
   document.getElementById('serverExternalUrl')?.addEventListener('input', updateArrWebhookUrls);
@@ -688,6 +689,53 @@ function updateArrWebhookUrls() {
 
   if (sonarrUrl) sonarrUrl.textContent = `${baseUrl}/webhooks/sonarr`;
   if (radarrUrl) radarrUrl.textContent = `${baseUrl}/webhooks/radarr`;
+}
+
+// Fetch webhook secret from server (generates if not set)
+async function fetchWebhookSecret() {
+  const webhookSecretDisplay = document.getElementById('webhookSecretDisplay');
+  if (!webhookSecretDisplay) return;
+
+  try {
+    const response = await apiGet(`${API_BASE}/api/config/webhook-secret`);
+    const data = await response.json();
+
+    if (data.webhookSecret) {
+      webhookSecretDisplay.textContent = data.webhookSecret;
+      webhookSecretDisplay.style.fontStyle = 'normal';
+    } else {
+      webhookSecretDisplay.textContent = 'Error loading secret';
+      webhookSecretDisplay.style.fontStyle = 'italic';
+    }
+  } catch (error) {
+    console.error('Failed to fetch webhook secret:', error);
+    webhookSecretDisplay.textContent = 'Error loading secret';
+    webhookSecretDisplay.style.fontStyle = 'italic';
+  }
+}
+
+// Copy webhook secret to clipboard
+function copyWebhookSecret() {
+  const secretEl = document.getElementById('webhookSecretDisplay');
+  const secret = secretEl?.textContent;
+
+  if (!secret || secret.includes('Not set') || secret.includes('Error') || secret === 'Loading...') {
+    showToast('No webhook secret to copy', 'error');
+    return;
+  }
+
+  navigator.clipboard.writeText(secret).then(() => {
+    showToast('Webhook secret copied to clipboard', 'success');
+  }).catch(() => {
+    // Fallback for older browsers
+    const textArea = document.createElement('textarea');
+    textArea.value = secret;
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textArea);
+    showToast('Webhook secret copied to clipboard', 'success');
+  });
 }
 
 // Setup webhook in Sonarr/Radarr
@@ -876,6 +924,12 @@ function populateForm(config) {
     config.downloadNotifications?.enabled !== false;
   document.getElementById('downloadNotificationsTemplate').value =
     config.downloadNotifications?.messageTemplate || '{emoji} {title} is ready to watch!';
+
+  // Webhook secret display - fetch or generate if needed
+  const webhookSecretDisplay = document.getElementById('webhookSecretDisplay');
+  if (webhookSecretDisplay) {
+    fetchWebhookSecret();
+  }
 
   // Messages
   const msg = config.messages || {};

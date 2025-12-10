@@ -111,6 +111,20 @@ export async function configRoutes(fastify: FastifyInstance, container: ServiceC
     return { prompt: getDefaultSystemPrompt() };
   });
 
+  // Get or generate webhook secret for download notifications
+  fastify.get('/api/config/webhook-secret', async () => {
+    const config = loadConfig();
+
+    // Generate webhook secret if not set
+    if (!config.downloadNotifications.webhookSecret) {
+      config.downloadNotifications.webhookSecret = randomUUID();
+      saveConfig(config);
+      log.info('Generated new webhook secret for download notifications');
+    }
+
+    return { webhookSecret: config.downloadNotifications.webhookSecret };
+  });
+
   // Save configuration and auto-apply
   fastify.post<{ Body: AppConfig }>('/api/config', async (request, reply) => {
     try {
